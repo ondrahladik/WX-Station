@@ -19,8 +19,12 @@ struct Config {
   String dataTemp;
   String dataHumi;
   String dataPress;
+  String dataLight;
   String dataRssi;
 
+  // Data active
+  bool activeLight;
+  
   // Offset config
   float offsetTemp;
   float offsetHumi;

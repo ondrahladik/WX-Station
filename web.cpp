@@ -126,63 +126,76 @@ void handleRoot() {
       "</div>"
     "</section>";
 
-  // ===== DATA =====
-  html +=
-    "<section>"
-      "<h5><i class='bi bi-server'></i> DATA</h5>"
+    // ===== DATA =====
+    html +=
+      "<section>"
+        "<h5><i class='bi bi-server'></i> DATA</h5>"
 
-      // Temp / Offset
-      "<div class='row mb-3'>"
-        "<label class='col-4 col-form-label'>Temp / Offset</label>"
-
-        "<div class='col-4'>"
-          "<input type='text' class='form-control' name='dataTemp' value='" + config.dataTemp + "' placeholder='temperature'>"
-        "</div>"
-        "<div class='col-4'>"
-          "<div class='input-group'>"
-            "<input type='number' step='0.1' class='form-control' name='offsetTemp' value='" + String(config.offsetTemp, 1) + "' placeholder='0,0'>"
-            "<span class='input-group-text'>°C</span>"
+        // Temp / Offset
+        "<div class='row mb-3'>"
+          "<label class='col-4 col-form-label'>Temp / Offset</label>"
+          "<div class='col-4'>"
+            "<input type='text' class='form-control' name='dataTemp' value='" + config.dataTemp + "' placeholder='temperature'>"
+          "</div>"
+          "<div class='col-4'>"
+            "<div class='input-group'>"
+              "<input type='number' step='0.1' class='form-control' name='offsetTemp' value='" + String(config.offsetTemp, 1) + "' placeholder='0,0'>"
+              "<span class='input-group-text'>°C</span>"
+            "</div>"
           "</div>"
         "</div>"
-      "</div>"
 
-      // Humi / Offset
-      "<div class='row mb-3'>"
-        "<label class='col-4 col-form-label'>Humi / Offset</label>"
-        "<div class='col-4'>"
-          "<input type='text' class='form-control' name='dataHumi' value='" + config.dataHumi + "' placeholder='humidity'>"
+        // Humi / Offset
+        "<div class='row mb-3'>"
+          "<label class='col-4 col-form-label'>Humi / Offset</label>"
+          "<div class='col-4'>"
+            "<input type='text' class='form-control' name='dataHumi' value='" + config.dataHumi + "' placeholder='humidity'>"
+          "</div>"
+          "<div class='col-4'>"
+              "<div class='input-group'>"
+                "<input type='number' step='0.1' class='form-control' name='offsetHumi' value='" + String(config.offsetHumi, 1) + "' placeholder='0,0'>"
+                "<span class='input-group-text'>%</span>"
+              "</div>"
+          "</div>"
         "</div>"
-        "<div class='col-4'>"
-            "<div class='input-group'>"
-              "<input type='number' step='0.1' class='form-control' name='offsetHumi' value='" + String(config.offsetHumi, 1) + "' placeholder='0,0'>"
-              "<span class='input-group-text'>%</span>"
+
+        // Press / Offset
+        "<div class='row mb-3'>"
+          "<label class='col-4 col-form-label'>Press / Offset</label>"
+          "<div class='col-4'>"
+            "<input type='text' class='form-control' name='dataPress' value='" + config.dataPress + "' placeholder='pressure'>"
+          "</div>"
+          "<div class='col-4'>"
+              "<div class='input-group'>"
+                "<input type='number' step='0.1' class='form-control' name='offsetPress' value='" + String(config.offsetPress, 1) + "' placeholder='0,0'>"
+                "<span class='input-group-text'>hPa</span>"
+              "</div>"
+          "</div>"
+        "</div>"
+
+        // Light
+        "<div class='row mb-3'>"
+          "<div class='col-4 d-flex align-items-center'>"
+            "<label class='col-form-label me-2'>Light</label>"
+             "<div class='form-check form-switch m-0'>"
+              "<input class='form-check-input' type='checkbox' name='activeLight' " + String(config.activeLight ? "checked" : "") + ">"
             "</div>"
+          "</div>"
+          "<div class='col-8'>"
+            "<input type='text' class='form-control' name='dataLight' value='" + config.dataLight + "' placeholder='light'>"
+          "</div>"
         "</div>"
-      "</div>"
 
-      // Press / Offset
-      "<div class='row mb-3'>"
-        "<label class='col-4 col-form-label'>Press / Offset</label>"
-        "<div class='col-4'>"
-          "<input type='text' class='form-control' name='dataPress' value='" + config.dataPress + "' placeholder='pressure'>"
+        // RSSI 
+        "<div class='row mb-3'>"
+          "<label class='col-4 col-form-label'>RSSI</label>"
+          "<div class='col-8'>"
+            "<input type='text' class='form-control' name='dataRssi' value='" + config.dataRssi + "' placeholder='rssi'>"
+          "</div>"
         "</div>"
-        "<div class='col-4'>"
-            "<div class='input-group'>"
-              "<input type='number' step='0.1' class='form-control' name='offsetPress' value='" + String(config.offsetPress, 1) + "' placeholder='0,0'>"
-              "<span class='input-group-text'>hPa</span>"
-            "</div>"
-        "</div>"
-      "</div>"
 
-      // RSSI 
-      "<div class='row mb-3'>"
-        "<label class='col-4 col-form-label'>RSSI</label>"
-        "<div class='col-8'>"
-          "<input type='text' class='form-control' name='dataRssi' value='" + config.dataRssi + "' placeholder='rssi'>"
-        "</div>"
-      "</div>"
+      "</section>";
 
-    "</section>";
 
   // ===== SERVER =====
   html +=
@@ -509,9 +522,12 @@ void handleSave() {
   if (server.hasArg("altitude"))  config.altitude  = server.arg("altitude").toFloat();
 
   // ===== DATA =====
+  config.activeLight = server.hasArg("activeLight");
+
   if (server.hasArg("dataTemp"))  config.dataTemp  = server.arg("dataTemp");
   if (server.hasArg("dataHumi"))  config.dataHumi  = server.arg("dataHumi");
   if (server.hasArg("dataPress")) config.dataPress = server.arg("dataPress");
+  if (server.hasArg("dataLight")) config.dataLight = server.arg("dataLight");
   if (server.hasArg("dataRssi"))  config.dataRssi  = server.arg("dataRssi");
 
   if (server.hasArg("offsetTemp"))  config.offsetTemp  = server.arg("offsetTemp").toFloat();

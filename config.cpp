@@ -23,10 +23,14 @@ bool loadConfig() {
     config.stationName = "wx-station";
     config.altitude    = 230.0;
 
+    // Data active
+    config.activeLight = false; 
+
     // Data config defaults
     config.dataTemp    = "temperature";
     config.dataHumi    = "humidity";
     config.dataPress   = "pressure";
+    config.dataLight   = "light";
     config.dataRssi    = "rssi";
 
     // Offset config defaults
@@ -103,10 +107,14 @@ bool loadConfig() {
   config.stationName = doc["stationName"]    | "wx-station";
   config.altitude = doc["altitude"]          | 230.0;
 
+  // Data active
+  config.activeLight = doc["activeLight"]   | false;
+
   // Data config
   config.dataTemp    = doc["dataTemp"]    | "temperature";
   config.dataHumi    = doc["dataHumi"]    | "humidity";
   config.dataPress   = doc["dataPress"]   | "pressure";
+  config.dataLight   = doc["dataLight"]   | "light";
   config.dataRssi    = doc["dataRssi"]    | "rssi";
 
   // Offset config
@@ -168,11 +176,15 @@ bool saveConfig() {
   // Station config
   doc["stationName"]    = config.stationName;
   doc["altitude"]       = config.altitude;
+  
+  // Data active  
+  doc["activeLight"] = config.activeLight;
 
   // Data config
   doc["dataTemp"]    = config.dataTemp;
   doc["dataHumi"]    = config.dataHumi;
   doc["dataPress"]   = config.dataPress;
+  doc["dataLight"]   = config.dataLight;
   doc["dataRssi"]    = config.dataRssi;
 
   // Offset config

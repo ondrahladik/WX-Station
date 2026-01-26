@@ -8,11 +8,12 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <WebServer.h>
+#include <BH1750.h>
 #include "config.h"
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.0";
+const char* programVers = "v1.0.1";
 
 WiFiUDP udp;
 WiFiManager wm;
@@ -22,6 +23,9 @@ PubSubClient mqttClient(wifiClient);
 
 // ====== Global variables ======
 bool mqttNoWiFiReported = false;
+bool bmeOK = false;
+bool lightOK = false;
+
 unsigned long lastSensorRead = 0;
 unsigned long lastHttpSend = 0;
 unsigned long lastAprsSend = 0;
@@ -32,9 +36,11 @@ unsigned long intervalSensor = 30000;
 unsigned long lastMQTTReconnectAttempt = 0;
 const unsigned long mqttReconnectInterval = 10000; 
 float temperature, humidity, pressure, seaLevelPressure;
+float lightLux, lightWm2;
 int rssi;
 
 Adafruit_BME280 bme;
+BH1750 lightSensor;  
 
 // ====== Functions ======
 void debugPrint(const String& msg, bool newline = false) {
@@ -184,6 +190,19 @@ void readSensorData() {
   rssi = WiFi.RSSI();
 }
 
+void readLightSensor() {
+    float lux = lightSensor.readLightLevel();
+
+    if (lux < 0 || isnan(lux)) {
+        debugPrint("Light sensor read error!", true);
+        logToSyslog("Light sensor read error!");
+        return;
+    }
+
+    lightLux = lux;
+    lightWm2 = lux * 0.0079;
+}
+
 void sendInfoToDB() {
   if (!config.serverActive0) return;
 
@@ -201,10 +220,13 @@ void sendInfoToDB() {
 
   String url = config.serverUrl0;
   if (config.serverName0.length() > 0) { 
-      url += "?station=" + config.serverName0;
+      url += "?station=";
+      url += config.serverName0;
+      url += "&version=";
+      url += programVers;
   } else {
       url += "?version=";
-      url += programVers;                
+      url += programVers;
   }
   url += "&loc-ip=" + localIP;
   url += "&pub-ip=" + publicIP;
@@ -239,6 +261,9 @@ void sendDataToDB() {
       firstParam = false;
       url += "&" + String(config.dataHumi) + "=" + String(humidity, 2);
       url += "&" + String(config.dataPress) + "=" + String(seaLevelPressure, 2);
+      if (config.activeLight) {
+        url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
+      }
       url += "&" + String(config.dataRssi) + "=" + String(rssi);
 
       HTTPClient http;
@@ -273,6 +298,9 @@ void sendDataToDB() {
       firstParam = false;
       url += "&" + String(config.dataHumi) + "=" + String(humidity, 2);
       url += "&" + String(config.dataPress) + "=" + String(seaLevelPressure, 2);
+      if (config.activeLight) {
+        url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
+      }
       url += "&" + String(config.dataRssi) + "=" + String(rssi);
 
       HTTPClient http;
@@ -306,6 +334,9 @@ void sendDataToDB() {
       firstParam = false;
       url += "&" + String(config.dataHumi) + "=" + String(humidity, 2);
       url += "&" + String(config.dataPress) + "=" + String(seaLevelPressure, 2);
+      if (config.activeLight) {
+        url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
+      }
       url += "&" + String(config.dataRssi) + "=" + String(rssi);
 
       HTTPClient http;
@@ -346,16 +377,26 @@ void sendDataToAPRS() {
     float temperatureF = (temperature * 1.8) + 32;
 
     char sentence[180];
-    snprintf(sentence, sizeof(sentence),
-             "%s>APRS,TCPIP*:@%02d%02d%02dz%s/%s_.../...t%03dh%02db%05d%s",
-             config.aprsCall,
-             0, 0, 0,
-             config.aprsLat,
-             config.aprsLon,
-             (int)temperatureF,
-             (int)humidity,
-             (int)(seaLevelPressure * 10),
-             config.aprsComment);
+
+    const char* format =
+        "%s>APRS,TCPIP*:@%02d%02d%02dz%s/%s_.../...t%03dh%02db%05d%s%s";
+
+    char lightPart[10] = "";
+    if (config.activeLight) {
+        snprintf(lightPart, sizeof(lightPart), "L%03d", (int)lightWm2);
+    }
+
+    snprintf(sentence, sizeof(sentence), format,
+            config.aprsCall,
+            0, 0, 0,
+            config.aprsLat,
+            config.aprsLon,
+            (int)temperatureF,
+            (int)humidity,
+            (int)(seaLevelPressure * 10),
+            lightPart,
+            config.aprsComment
+    );
 
     // Sending
     client.println(sentence);
@@ -411,6 +452,9 @@ void publishToMQTT() {
   jsonDoc[config.dataTemp]  = roundf(temperature * 100) / 100.0;
   jsonDoc[config.dataHumi]  = roundf(humidity * 100) / 100.0;
   jsonDoc[config.dataPress] = roundf(seaLevelPressure * 100) / 100.0;
+  if (config.activeLight) {
+      jsonDoc[config.dataLight] = roundf(lightWm2 * 100) / 100.0;
+  }
   jsonDoc[config.dataRssi]  = rssi;
 
   char jsonBuffer[256];
@@ -504,14 +548,40 @@ void setup() {
     ESP.restart();
   }
 
+  loadConfig();
+
   // Init BME280
-  if (!bme.begin(0x76)) {
-    debugPrint("BME280 not found!", true);
-    logToSyslog("BME280 not found!");
-    while (1);
+  for (int i = 0; i < 5; i++) {  
+      if (bme.begin(0x76)) {
+          bmeOK = true;
+          break;
+      }
+      debugPrint("BME280 not found, retrying...", true);
+      delay(1000);
   }
 
-  loadConfig();
+  if (!bmeOK) {
+      debugPrint("BME280 unavailable, continuing without it!", true);
+      logToSyslog("BME280 unavailable, continuing without it!");
+  }
+
+  // Init BH1750 
+  if (config.activeLight) {
+      for (int i = 0; i < 5; i++) {  
+          if (lightSensor.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
+              lightOK = true;
+              break;
+          }
+          debugPrint("BH1750 not found, retrying...", true);
+          delay(1000);
+      }
+
+      if (!lightOK) {
+          debugPrint("BH1750 unavailable, continuing without it!", true);
+          logToSyslog("BH1750 unavailable, continuing without it!");
+      }
+  }
+
   setupWeb();
 
   // MQTT setup
@@ -567,10 +637,15 @@ void loop() {
 
   // Read sensor
   if (now - lastSensorRead >= intervalSensor) {
-    lastSensorRead = now;
-    if (WiFi.status() == WL_CONNECTED) {
-      readSensorData();
-    }
+      lastSensorRead = now;
+
+      if (WiFi.status() == WL_CONNECTED) {
+          readSensorData();   // BME280
+
+          if (config.activeLight) {
+              readLightSensor();  // BH1750
+          }
+      }
   }
 
   // HTTP 
