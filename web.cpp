@@ -395,8 +395,11 @@ void handleRoot() {
         // MQTT Pub Topic
         "<div class='row mb-3'>"
           "<label class='col-4 col-form-label'>Pub topic</label>"
-          "<div class='col-8'>"
-            "<input type='text' class='form-control' name='mqttTopicPub1' value='" + config.mqttTopicPub1 + "' placeholder='Pub topic'>"
+          "<div class='col-4'>"
+            "<input type='text' class='form-control' name='mqttTopicPub1' value='" + config.mqttTopicPub1 + "' placeholder='Pub topic 1'>"
+          "</div>"
+           "<div class='col-4'>"
+            "<input type='text' class='form-control' name='mqttTopicPub2' value='" + config.mqttTopicPub2 + "' placeholder='Pub topic 2'>"
           "</div>"
         "</div>"
 
@@ -561,6 +564,7 @@ void handleSave() {
   if (server.hasArg("mqttServer"))     config.mqttServer    = server.arg("mqttServer");
   if (server.hasArg("mqttPort"))       config.mqttPort      = server.arg("mqttPort").toInt();
   if (server.hasArg("mqttTopicPub1"))  config.mqttTopicPub1 = server.arg("mqttTopicPub1");
+  if (server.hasArg("mqttTopicPub2"))  config.mqttTopicPub2 = server.arg("mqttTopicPub2");
   if (server.hasArg("mqttTopicSub1"))  config.mqttTopicSub1 = server.arg("mqttTopicSub1");
   if (server.hasArg("mqttTopicSub2"))  config.mqttTopicSub2 = server.arg("mqttTopicSub2");
 

@@ -65,6 +65,7 @@ bool loadConfig() {
     config.mqttServer     = "example.com";
     config.mqttPort       = 1883;
     config.mqttTopicPub1  = "";
+    config.mqttTopicPub2  = "";
     config.mqttTopicSub1  = "";
     config.mqttTopicSub2  = "";
 
@@ -150,6 +151,7 @@ bool loadConfig() {
   config.mqttServer     = doc["mqttServer"]    | "example.com";
   config.mqttPort       = doc["mqttPort"]      | 1883;
   config.mqttTopicPub1  = doc["mqttTopicPub1"] | "";
+  config.mqttTopicPub2  = doc["mqttTopicPub2"] | "";
   config.mqttTopicSub1  = doc["mqttTopicSub1"] | "";
   config.mqttTopicSub2  = doc["mqttTopicSub2"] | "";
 
@@ -219,6 +221,7 @@ bool saveConfig() {
   doc["mqttServer"]     = config.mqttServer;
   doc["mqttPort"]       = config.mqttPort;
   doc["mqttTopicPub1"]  = config.mqttTopicPub1;
+  doc["mqttTopicPub2"]  = config.mqttTopicPub2;
   doc["mqttTopicSub1"]  = config.mqttTopicSub1;
   doc["mqttTopicSub2"]  = config.mqttTopicSub2;
 

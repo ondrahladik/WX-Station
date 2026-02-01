@@ -13,7 +13,7 @@
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.1";
+const char* programVers = "v1.0.2";
 
 WiFiUDP udp;
 WiFiManager wm;
@@ -498,6 +498,65 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
     logToSyslog("MQTT | RECV OK | Command INFO -> Sending info...");
     sendInfoToDB();
   }
+  // ======= Get config value =======
+  else if (message.startsWith("get(") && message.endsWith(")")) {
+    String key = message.substring(4, message.length() - 1);
+    key.trim();
+    
+    File file = LittleFS.open("/config.json", "r");
+    if (!file) {
+      debugPrint("MQTT | RECV KO | Command get(" + key + ") -> Cannot open config", true);
+      logToSyslog(("MQTT | RECV KO | Command get(" + key + ") -> Cannot open config").c_str());
+      return;
+    }
+
+    // Return entire config
+    if (key == "config") {
+      String configJson;
+      while (file.available()) {
+        configJson += (char)file.read();
+      }
+      file.close();
+      
+      mqttClient.publish(config.mqttTopicPub2.c_str(), configJson.c_str());
+      debugPrint("MQTT | RECV OK | Command get(config) -> Full config sent", true);
+      logToSyslog("MQTT | RECV OK | Command get(config) -> Full config sent");
+      return;
+    }
+
+    StaticJsonDocument<2048> doc;
+    DeserializationError error = deserializeJson(doc, file);
+    file.close();
+
+    if (error) {
+      debugPrint("MQTT | RECV KO | Command get(" + key + ") -> JSON parse error", true);
+      logToSyslog(("MQTT | RECV KO | Command get(" + key + ") -> JSON parse error").c_str());
+      return;
+    }
+
+    if (doc.containsKey(key)) {
+      String value;
+      JsonVariant val = doc[key];
+      
+      if (val.is<bool>()) {
+        value = val.as<bool>() ? "true" : "false";
+      } else if (val.is<int>()) {
+        value = String(val.as<int>());
+      } else if (val.is<float>()) {
+        value = String(val.as<float>());
+      } else {
+        value = val.as<String>();
+      }
+
+      String response = key + "(" + value + ")";
+      mqttClient.publish(config.mqttTopicPub2.c_str(), response.c_str());
+      debugPrint("MQTT | RECV OK | Command get(" + key + ") -> " + response, true);
+      logToSyslog(("MQTT | RECV OK | Command get(" + key + ") -> " + response).c_str());
+    } else {
+      debugPrint("MQTT | RECV KO | Command get(" + key + ") -> Unknown key", true);
+      logToSyslog(("MQTT | RECV KO | Command get(" + key + ") -> Unknown key").c_str());
+    }
+  }
   // ======= OTA Update =======
   else if (message.startsWith("update(") && message.endsWith(")")) {
     String url = message.substring(7, message.length() - 1);
@@ -585,6 +644,7 @@ void setup() {
   setupWeb();
 
   // MQTT setup
+  mqttClient.setBufferSize(2048);
   mqttClient.setServer(config.mqttServer.c_str(), config.mqttPort);
   mqttClient.setCallback(subscribeMQTT);   
 

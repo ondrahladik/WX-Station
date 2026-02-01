@@ -59,6 +59,7 @@ struct Config {
 
   // MQTT topics
   String mqttTopicPub1;
+  String mqttTopicPub2;
   String mqttTopicSub1;
   String mqttTopicSub2;
 
