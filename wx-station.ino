@@ -13,7 +13,7 @@
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.2";
+const char* programVers = "v1.0.3";
 
 WiFiUDP udp;
 WiFiManager wm;
@@ -555,6 +555,116 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
     } else {
       debugPrint("MQTT | RECV KO | Command get(" + key + ") -> Unknown key", true);
       logToSyslog(("MQTT | RECV KO | Command get(" + key + ") -> Unknown key").c_str());
+    }
+  }
+  // ======= Set full config JSON =======
+  else if (message.startsWith("set(config=")) {
+    int startIdx = 11; 
+    int endIdx = message.lastIndexOf(')');
+    
+    if (endIdx <= startIdx) {
+      debugPrint("MQTT | RECV KO | Command set(config) -> Invalid format", true);
+      logToSyslog("MQTT | RECV KO | Command set(config) -> Invalid format");
+      return;
+    }
+    
+    String jsonStr = message.substring(startIdx, endIdx);
+    jsonStr.trim();
+    
+    StaticJsonDocument<2048> doc;
+    DeserializationError error = deserializeJson(doc, jsonStr);
+    
+    if (error) {
+      String errMsg = "MQTT | RECV KO | Command set(config) -> JSON parse error: " + String(error.c_str());
+      debugPrint(errMsg, true);
+      logToSyslog(errMsg.c_str());
+      return;
+    }
+    
+    File outFile = LittleFS.open("/config.json", "w");
+    if (outFile) {
+      serializeJsonPretty(doc, outFile);
+      outFile.close();
+      loadConfig();
+      
+      mqttClient.publish(config.mqttTopicPub2.c_str(), "set(config) OK");
+      debugPrint("MQTT | RECV OK | set(config) -> Full config replaced", true);
+      logToSyslog("MQTT | RECV OK | set(config) -> Full config replaced");
+    } else {
+      debugPrint("MQTT | RECV KO | Command set(config) -> Failed to save", true);
+      logToSyslog("MQTT | RECV KO | Command set(config) -> Failed to save");
+    }
+  }
+  // ======= Set config value =======
+  else if (message.startsWith("set(") && message.endsWith(")")) {
+    String content = message.substring(4, message.length() - 1);
+    int eqPos = content.indexOf('=');
+    
+    if (eqPos == -1) {
+      debugPrint("MQTT | RECV KO | Command set() -> Missing '='", true);
+      logToSyslog("MQTT | RECV KO | Command set() -> Missing '='");
+      return;
+    }
+    
+    String key = content.substring(0, eqPos);
+    String value = content.substring(eqPos + 1);
+    key.trim();
+    value.trim();
+    
+    File file = LittleFS.open("/config.json", "r");
+    StaticJsonDocument<2048> doc;
+    
+    if (file) {
+      deserializeJson(doc, file);
+      file.close();
+    }
+
+    String valueParsed = value;
+    valueParsed.replace(',', '.');
+    bool hasDecimal = (valueParsed.indexOf('.') >= 0);
+    
+    // Fields that allow float values
+    bool isFloatField = (key == "altitude" || key == "offsetTemp" || key == "offsetHumi" || key == "offsetPress");
+    
+    if (doc.containsKey(key)) {
+      JsonVariant existing = doc[key];
+      if (existing.is<bool>()) {
+        doc[key] = (value == "true" || value == "1");
+      } else if (existing.is<float>() || existing.is<double>() || existing.is<int>()) {
+        if (isFloatField) {
+          doc[key] = valueParsed.toFloat();
+        } else {
+          doc[key] = valueParsed.toInt();
+        }
+      } else {
+        doc[key] = value;
+      }
+    } else {
+      // New key - auto-detect type from value
+      if (value == "true" || value == "false") {
+        doc[key] = (value == "true");
+      } else if (isFloatField && hasDecimal) {
+        doc[key] = valueParsed.toFloat();
+      } else if (valueParsed.toInt() != 0 || valueParsed == "0") {
+        doc[key] = valueParsed.toInt();
+      } else {
+        doc[key] = value;
+      }
+    }
+    
+    File outFile = LittleFS.open("/config.json", "w");
+    if (outFile) {
+      serializeJsonPretty(doc, outFile);
+      outFile.close();
+      loadConfig();  
+      
+      String response = "set(" + key + "=" + value + ") OK";
+      mqttClient.publish(config.mqttTopicPub2.c_str(), response.c_str());
+      debugPrint("MQTT | RECV OK | " + response, true);
+      logToSyslog(("MQTT | RECV OK | " + response).c_str());
+    } else {
+      debugPrint("MQTT | RECV KO | Command set(" + key + ") -> Failed to save", true);
+      logToSyslog(("MQTT | RECV KO | Command set(" + key + ") -> Failed to save").c_str());
     }
   }
   // ======= OTA Update =======
