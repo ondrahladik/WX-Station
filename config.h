@@ -7,6 +7,7 @@
 struct Config {
   // Active config
   bool debugMode;
+  bool activeHeartbeat;
   bool activeAPRS;
   bool activeMQTT;
   bool activeSYSLOG;

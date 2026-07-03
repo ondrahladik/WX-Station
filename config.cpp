@@ -15,6 +15,7 @@ bool loadConfig() {
     
     // Active config default
     config.debugMode     = false; 
+    config.activeHeartbeat = false;
     config.activeAPRS    = false; 
     config.activeMQTT    = false; 
     config.activeSYSLOG  = false; 
@@ -99,10 +100,11 @@ bool loadConfig() {
   }
 
   // Active config
-  config.debugMode   = doc["debugMode"]       | false;
-  config.activeAPRS  = doc["activeAPRS"]      | false;
-  config.activeMQTT  = doc["activeMQTT"]      | false;
-  config.activeSYSLOG  = doc["activeSYSLOG"]  | false;
+  config.debugMode       = doc["debugMode"]        | false;
+  config.activeHeartbeat = doc["activeHeartbeat"]  | false;
+  config.activeAPRS      = doc["activeAPRS"]       | false;
+  config.activeMQTT      = doc["activeMQTT"]       | false;
+  config.activeSYSLOG    = doc["activeSYSLOG"]     | false;
 
   // Station config
   config.stationName = doc["stationName"]    | "wx-station";
@@ -170,10 +172,11 @@ bool loadConfig() {
 
 bool saveConfig() {
   StaticJsonDocument<2048> doc; 
-  doc["debugMode"]      = config.debugMode;
-  doc["activeAPRS"]     = config.activeAPRS;
-  doc["activeMQTT"]     = config.activeMQTT;
-  doc["activeSYSLOG"]   = config.activeSYSLOG;
+  doc["debugMode"]        = config.debugMode;
+  doc["activeHeartbeat"]  = config.activeHeartbeat;
+  doc["activeAPRS"]       = config.activeAPRS;
+  doc["activeMQTT"]       = config.activeMQTT;
+  doc["activeSYSLOG"]     = config.activeSYSLOG;
 
   // Station config
   doc["stationName"]    = config.stationName;
