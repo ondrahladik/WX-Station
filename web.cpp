@@ -1,6 +1,7 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include "config.h"
+#include "heartbeat.h"
 #include "web.h"
 
 extern const char* programVers;
@@ -26,7 +27,8 @@ void handleUpload() {
     if (uploadFile) {
       uploadFile.close();
     }
-    loadConfig();  
+    loadConfig();
+    Heartbeat::setEnabled(config.activeHeartbeat);
   }
 }
 
@@ -486,8 +488,20 @@ void handleRoot() {
       "</div>"
     "</section>";
 
-  // ===== DEBUG =====
+  // ===== HEARTBEAT =====
   html +=
+    "<section>"
+      "<div class='d-flex align-items-center justify-content-between mb-3'>"
+        "<h5><i class='bi bi-heart-pulse-fill'></i> HEARTBEAT</h5>"
+        "<div class='form-check form-switch mb-0'>"
+          "<input class='form-check-input' type='checkbox' id='activeHeartbeat' name='activeHeartbeat' "
+          + String(config.activeHeartbeat ? "checked" : "") + ">"
+          "<label class='form-check-label' for='activeHeartbeat'></label>"
+        "</div>"
+      "</div>"
+    "</section>"
+
+  // ===== DEBUG =====
     "<section class='last'>"
       "<div class='d-flex align-items-center justify-content-between mb-3'>"
         "<h5><i class='bi bi-bug-fill'></i> DEBUG</h5>"
@@ -515,10 +529,11 @@ void handleRoot() {
 
 // ====== Handle save config ======
 void handleSave() {
-  config.debugMode  = server.hasArg("debugMode");
-  config.activeAPRS = server.hasArg("activeAPRS");
-  config.activeMQTT = server.hasArg("activeMQTT");
-  config.activeSYSLOG = server.hasArg("activeSYSLOG");
+  config.debugMode       = server.hasArg("debugMode");
+  config.activeHeartbeat = server.hasArg("activeHeartbeat");
+  config.activeAPRS      = server.hasArg("activeAPRS");
+  config.activeMQTT      = server.hasArg("activeMQTT");
+  config.activeSYSLOG    = server.hasArg("activeSYSLOG");
 
   // ===== STATION =====
   if (server.hasArg("stationName"))  config.stationName  = server.arg("stationName");
@@ -583,6 +598,7 @@ void handleSave() {
 
   // save config to file
   saveConfig();
+  Heartbeat::setEnabled(config.activeHeartbeat);
 
   // Redirect back to root
   server.sendHeader("Location", "/", true);
@@ -631,6 +647,7 @@ void setupWeb() {
           LittleFS.remove("/config.json"); 
       }
       loadConfig();
+      Heartbeat::setEnabled(config.activeHeartbeat);
       server.sendHeader("Location", "/", true);
       server.send(303, "text/plain", "");
   });
