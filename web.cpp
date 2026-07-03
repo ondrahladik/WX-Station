@@ -83,7 +83,7 @@ void handleRoot() {
               "<ul class='dropdown-menu' aria-labelledby='backupDropdown'>"
                 "<li><a class='dropdown-item' href='#' onclick='alert(\"After starting WiFi Manager, this page will be deactivated until the manager is closed.\"); fetch(\"/wifi\"); return false;'>WiFi Manager</a></li>"
                 "<li><a class='dropdown-item' href='/factory' onclick=\"return confirm('Are you sure? All settings will be deleted.');\">Factory reset</a></li>"
-                "<li><a class='dropdown-item' href='#' onclick='alert(\"ESP is restarting...\"); fetch(\"/reboot\"); return false;'>Reboot</a></li>"
+                "<li><a class='dropdown-item' href='#' onclick='alert(\"WX Station is restarting...\"); fetch(\"/reboot\"); return false;'>Reboot</a></li>"
               "</ul>"
             "</li>"
 
