@@ -9,11 +9,13 @@
 #include <ArduinoJson.h>
 #include <WebServer.h>
 #include <BH1750.h>
+#include <Wire.h>
 #include "config.h"
+#include "heartbeat.h"
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.3";
+const char* programVers = "v1.0.4";
 
 WiFiUDP udp;
 WiFiManager wm;
@@ -25,6 +27,12 @@ PubSubClient mqttClient(wifiClient);
 bool mqttNoWiFiReported = false;
 bool bmeOK = false;
 bool lightOK = false;
+bool setupCompleted = false;
+bool accessPointModeActive = false;
+bool fatalErrorActive = false;
+bool runtimeSensorFaultActive = false;
+uint8_t bmeReadErrorCount = 0;
+uint8_t lightReadErrorCount = 0;
 
 unsigned long lastSensorRead = 0;
 unsigned long lastHttpSend = 0;
@@ -35,12 +43,86 @@ unsigned long restartIntervalMs = 0;
 unsigned long intervalSensor = 30000;
 unsigned long lastMQTTReconnectAttempt = 0;
 const unsigned long mqttReconnectInterval = 10000; 
+const uint8_t maxConsecutiveBmeReadErrors = 5;
+const uint8_t maxConsecutiveLightReadErrors = 5;
+const unsigned long sensorRecoveryIntervalMs = 5000;
+const uint8_t bmeI2cAddress = 0x76;
+const uint8_t bh1750PrimaryAddress = 0x23;
+const uint8_t bh1750SecondaryAddress = 0x5C;
 float temperature, humidity, pressure, seaLevelPressure;
 float lightLux, lightWm2;
 int rssi;
 
 Adafruit_BME280 bme;
 BH1750 lightSensor;  
+uint8_t activeBh1750Address = bh1750PrimaryAddress;
+
+void debugPrint(const String& msg, bool newline);
+void debugPrint(const char* msg, bool newline);
+void logToSyslog(const char* message);
+bool initBME280(uint8_t attempts = 5, bool waitBetweenAttempts = true);
+bool initBH1750(uint8_t attempts = 5, bool waitBetweenAttempts = true);
+bool isI2CDeviceResponsive(uint8_t address);
+bool isBME280Responsive();
+bool isBH1750Responsive();
+void tryRecoverSensors();
+
+void refreshHeartbeatState() {
+  if (fatalErrorActive || runtimeSensorFaultActive) {
+    Heartbeat::setState(Heartbeat::State::Error);
+  } else if (accessPointModeActive) {
+    Heartbeat::setState(Heartbeat::State::AccessPoint);
+  } else if (setupCompleted) {
+    Heartbeat::setState(Heartbeat::State::Normal);
+  } else {
+    Heartbeat::setState(Heartbeat::State::Booting);
+  }
+}
+
+void setAccessPointMode(bool active) {
+  accessPointModeActive = active;
+  refreshHeartbeatState();
+}
+
+void setFatalError(const char* message) {
+  if (!fatalErrorActive) {
+    debugPrint(message, true);
+    logToSyslog(message);
+  }
+
+  fatalErrorActive = true;
+  refreshHeartbeatState();
+}
+
+void setRuntimeSensorFault(const char* message) {
+  if (!runtimeSensorFaultActive) {
+    debugPrint(message, true);
+    logToSyslog(message);
+  }
+
+  runtimeSensorFaultActive = true;
+  bmeOK = false;
+  lightOK = false;
+  refreshHeartbeatState();
+}
+
+void clearRuntimeSensorFault() {
+  if (!runtimeSensorFaultActive) {
+    return;
+  }
+
+  runtimeSensorFaultActive = false;
+  bmeReadErrorCount = 0;
+  lightReadErrorCount = 0;
+  debugPrint("SENS | Sensor communication restored, resuming station.", true);
+  logToSyslog("SENS | Sensor communication restored, resuming station.");
+  refreshHeartbeatState();
+}
+
+void onConfigPortalStarted(WiFiManager* wifiManager) {
+  (void)wifiManager;
+  setAccessPointMode(true);
+}
 
 // ====== Functions ======
 void debugPrint(const String& msg, bool newline = false) {
@@ -118,6 +200,7 @@ void restartInterval() {
 }
 
 void startCaptivePortal() {
+  setAccessPointMode(true);
   debugPrint("Web server turned off", true);
   logToSyslog("Web server turned off");
   server.stop();  
@@ -126,6 +209,7 @@ void startCaptivePortal() {
   wm.setConfigPortalTimeout(600);   
   wm.setTitle("WX Station");
   wm.startConfigPortal("WX-StationAP");  
+  setAccessPointMode(false);
 
   server.begin();
   debugPrint("Web server turned on", true);
@@ -170,16 +254,136 @@ void reconnectWiFi() {
   }
 }
 
+bool initBME280(uint8_t attempts, bool waitBetweenAttempts) {
+  for (uint8_t i = 0; i < attempts; i++) {
+    if (bme.begin(bmeI2cAddress) && isBME280Responsive()) {
+      bmeOK = true;
+      bmeReadErrorCount = 0;
+      return true;
+    }
+
+    if (i + 1 < attempts) {
+      debugPrint("SENS | BME280 not found, retrying...", true);
+      if (waitBetweenAttempts) {
+        delay(1000);
+      }
+    }
+  }
+
+  bmeOK = false;
+  return false;
+}
+
+bool isI2CDeviceResponsive(uint8_t address) {
+  Wire.beginTransmission(address);
+  return Wire.endTransmission() == 0;
+}
+
+bool isBME280Responsive() {
+  if (!isI2CDeviceResponsive(bmeI2cAddress)) {
+    return false;
+  }
+
+  uint8_t sensorId = bme.sensorID();
+  return sensorId == 0x60;
+}
+
+bool isBH1750Responsive() {
+  return isI2CDeviceResponsive(activeBh1750Address);
+}
+
+bool initBH1750(uint8_t attempts, bool waitBetweenAttempts) {
+  if (!config.activeLight) {
+    lightOK = false;
+    lightReadErrorCount = 0;
+    return true;
+  }
+
+  for (uint8_t i = 0; i < attempts; i++) {
+    if (isI2CDeviceResponsive(bh1750PrimaryAddress) &&
+        lightSensor.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, bh1750PrimaryAddress)) {
+      activeBh1750Address = bh1750PrimaryAddress;
+      lightOK = true;
+      lightReadErrorCount = 0;
+      return true;
+    }
+
+    if (isI2CDeviceResponsive(bh1750SecondaryAddress) &&
+        lightSensor.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, bh1750SecondaryAddress)) {
+      activeBh1750Address = bh1750SecondaryAddress;
+      lightOK = true;
+      lightReadErrorCount = 0;
+      return true;
+    }
+
+    if (i + 1 < attempts) {
+      debugPrint("SENS | BH1750 not found, retrying...", true);
+      if (waitBetweenAttempts) {
+        delay(1000);
+      }
+    }
+  }
+
+  lightOK = false;
+  return false;
+}
+
+void tryRecoverSensors() {
+  static unsigned long lastRecoveryAttempt = 0;
+  unsigned long now = millis();
+
+  if (now - lastRecoveryAttempt < sensorRecoveryIntervalMs) {
+    return;
+  }
+
+  lastRecoveryAttempt = now;
+
+  debugPrint("SENS | Sensor recovery in progress...", true);
+  logToSyslog("SENS | Sensor recovery in progress...");
+
+  bool bmeRecovered = initBME280(1, false);
+  bool lightRecovered = initBH1750(1, false);
+
+  if (bmeRecovered && lightRecovered) {
+    clearRuntimeSensorFault();
+    readSensorData();
+
+    if (config.activeLight) {
+      readLightSensor();
+    }
+  }
+}
+
 void readSensorData() {
+  if (!bmeOK) {
+    setRuntimeSensorFault("SENS | BME280 unavailable.");
+    return;
+  }
+
+  if (!isBME280Responsive()) {
+    setRuntimeSensorFault("SENS | BME280 communication lost.");
+    return;
+  }
+
   float temp = bme.readTemperature();
   float hum  = bme.readHumidity();
   float pres = bme.readPressure() / 100.0F;
 
   if (isnan(temp) || isnan(hum) || isnan(pres)) {
-    debugPrint("Sensor read error!", true);
-    logToSyslog("Sensor read error!");
+    debugPrint("SENS | BME280 read error!", true);
+    logToSyslog("SENS | BME280 read error!");
+
+    if (bmeReadErrorCount < 255) {
+      bmeReadErrorCount++;
+    }
+
+    if (bmeReadErrorCount >= maxConsecutiveBmeReadErrors) {
+      setRuntimeSensorFault("SENS | BME280 read failed repeatedly.");
+    }
     return;
   }
+
+  bmeReadErrorCount = 0;
 
   float seaLevel = pres / pow(1.0 - (config.altitude / 44330.0), 5.255);
 
@@ -191,14 +395,33 @@ void readSensorData() {
 }
 
 void readLightSensor() {
-    float lux = lightSensor.readLightLevel();
-
-    if (lux < 0 || isnan(lux)) {
-        debugPrint("Light sensor read error!", true);
-        logToSyslog("Light sensor read error!");
+    if (!lightOK) {
+        setRuntimeSensorFault("SENS | BH1750 unavailable.");
         return;
     }
 
+    if (!isBH1750Responsive()) {
+        setRuntimeSensorFault("SENS | BH1750 communication lost.");
+        return;
+    }
+
+    float lux = lightSensor.readLightLevel();
+
+    if (lux < 0 || isnan(lux)) {
+        debugPrint("SENS | BH1750 read error!", true);
+        logToSyslog("SENS | BH1750 read error!");
+
+        if (lightReadErrorCount < 255) {
+            lightReadErrorCount++;
+        }
+
+        if (lightReadErrorCount >= maxConsecutiveLightReadErrors) {
+            setRuntimeSensorFault("SENS | BH1750 read failed repeatedly.");
+        }
+        return;
+    }
+
+    lightReadErrorCount = 0;
     lightLux = lux;
     lightWm2 = lux * 0.0079;
 }
@@ -586,6 +809,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
       serializeJsonPretty(doc, outFile);
       outFile.close();
       loadConfig();
+      Heartbeat::setEnabled(config.activeHeartbeat);
       
       mqttClient.publish(config.mqttTopicPub2.c_str(), "set(config) OK");
       debugPrint("MQTT | RECV OK | set(config) -> Full config replaced", true);
@@ -656,7 +880,8 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
     if (outFile) {
       serializeJsonPretty(doc, outFile);
       outFile.close();
-      loadConfig();  
+      loadConfig();
+      Heartbeat::setEnabled(config.activeHeartbeat);
       
       String response = "set(" + key + "=" + value + ") OK";
       mqttClient.publish(config.mqttTopicPub2.c_str(), response.c_str());
@@ -705,50 +930,31 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
 // ====== Setup ======
 void setup() {
   Serial.begin(115200);
+  loadConfig();
+  Heartbeat::setEnabled(config.activeHeartbeat);
+  Heartbeat::begin();
+  Wire.begin();
 
   WiFi.setHostname("WX-Station");
   wm.setConnectRetries(3);
   wm.setConfigPortalTimeout(600);
   wm.setTitle("WX Station");
+  wm.setAPCallback(onConfigPortalStarted);
 
   if (!wm.autoConnect("WX-StationAP")) {
     debugPrint("REST | Failed to connect, restarting...", true);
     logToSyslog("REST | Failed to connect, restarting...");
     ESP.restart();
   }
+  setAccessPointMode(false);
 
-  loadConfig();
-
-  // Init BME280
-  for (int i = 0; i < 5; i++) {  
-      if (bme.begin(0x76)) {
-          bmeOK = true;
-          break;
-      }
-      debugPrint("BME280 not found, retrying...", true);
-      delay(1000);
-  }
-
-  if (!bmeOK) {
-      debugPrint("BME280 unavailable, continuing without it!", true);
-      logToSyslog("BME280 unavailable, continuing without it!");
+  if (!initBME280()) {
+      setRuntimeSensorFault("SENS | BME280 initialization failed.");
   }
 
   // Init BH1750 
-  if (config.activeLight) {
-      for (int i = 0; i < 5; i++) {  
-          if (lightSensor.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
-              lightOK = true;
-              break;
-          }
-          debugPrint("BH1750 not found, retrying...", true);
-          delay(1000);
-      }
-
-      if (!lightOK) {
-          debugPrint("BH1750 unavailable, continuing without it!", true);
-          logToSyslog("BH1750 unavailable, continuing without it!");
-      }
+  if (!fatalErrorActive && !initBH1750()) {
+      setRuntimeSensorFault("SENS | BH1750 initialization failed.");
   }
 
   setupWeb();
@@ -777,9 +983,12 @@ void setup() {
       debugPrint("SYST | LittleFS formatted and mounted successfully.", true);
       logToSyslog("SYST | LittleFS formatted and mounted successfully.");
     } else {
-      debugPrint("SYST | LittleFS mount failed, even after format!", true);
-      logToSyslog("SYST | LittleFS mount failed, even after format!");
+      setFatalError("SYST | LittleFS mount failed, even after format!");
     }
+  }
+
+  if (fatalErrorActive) {
+    return;
   }
 
   sendInfoToDB();
@@ -788,10 +997,27 @@ void setup() {
   publishToMQTT();
   sendDataToDB();
   sendDataToAPRS();
+
+  setupCompleted = true;
+  refreshHeartbeatState();
 }
 
 // ====== Loop ======
 void loop() {
+  Heartbeat::update();
+
+  if (fatalErrorActive) {
+    return;
+  }
+
+  if (runtimeSensorFaultActive) {
+    reconnectWiFi();
+    runningMQTT();
+    server.handleClient();
+    tryRecoverSensors();
+    return;
+  }
+
   unsigned long now = millis();
 
   // Periodic restart
