@@ -4,10 +4,10 @@ Heartbeat slouží jako jednoduchá vizuální indikace stavu stanice pomocí LE
 
 ## Stavy LED
 
-* **LED zhasnutá:** Stanice neběží nebo je funkce vypnutá.
-* **LED svítí:** Je aktivní režim přístupového bodu (AP).
-* **LED pomalu bliká:** Stanice běží normálně a vše funguje správně.
-* **LED rychle bliká:** Došlo ke kritické chybě nebo ke ztrátě komunikace se senzorem.
+* **Vypnuto:** Stanice neběží nebo je funkce vypnutá.
+* **Tvale svítí:** Je aktivní režim přístupového bodu (AP).
+* **Dvojblik:** Stanice běží normálně a vše funguje správně.
+* **Rychlé blikání:** Došlo ke kritické chybě nebo ke ztrátě komunikace se senzorem.
 
 ## Chování při chybě senzoru
 

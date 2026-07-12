@@ -4,10 +4,10 @@ Heartbeat serves as a simple visual indication of the station's status via an LE
 
 ## LED Statuses
 
-- **LED off**: The station is not running, or the function is disabled.
-- **LED on**: The access point (AP) is active.
-- **LED flashes slowly**: When the program starts up normally and everything works correctly.
-- **LED flashes faster**: Critical error or loss of communication with the sensor.
+- **Off**: The station is not running, or the function is disabled.
+- **On**: The access point (AP) is active.
+- **Double flash**: When the program starts up normally and everything works correctly.
+- **Fast flashing**: Critical error or loss of communication with the sensor.
 
 ## Sensor error behavior
 
