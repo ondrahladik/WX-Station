@@ -12,10 +12,6 @@ This project is primarily created and developed for the standard ESP32. Many suc
 | **BH1750**      | Measures illuminance in lux (lx), converted to W/m² in the firmware.           | Yes     | 21 (SDA), 22 (SCL) | Optional       |
 | **MS-WH-SP-RG** | Rain sensor module.                                                            | —       | —                  | Coming soon    |
 
-I²C wiring:  
-- SDA - GPIO 21
-- SCL - GPIO 22
-
 ## Other
 
 | Name            | Description                                                                    | Disable | GPIO      | Notes          |
