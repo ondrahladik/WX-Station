@@ -1,3 +1,5 @@
+# Hardware
+
 ## Mikrokontrolér
 
 Tento projekt je primárně vytvářen a vyvíjen pro standardní **ESP32**. Tyto desky vyrábí mnoho výrobců, obecně však doporučuji desku označenou jako **ESP-WROOM-32**.

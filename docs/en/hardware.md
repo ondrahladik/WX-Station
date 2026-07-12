@@ -1,3 +1,5 @@
+# Hardware
+
 ## Microcontroller
 
 This project is primarily created and developed for the standard ESP32. Many such boards are manufactured, but generally I recommend a board labeled **ESP-WROOM-32**.
