@@ -1,4 +1,4 @@
-[← Zpět na rozcestník](./README.md)
+[← Zpět na rozcestník](./)
 
 # Hardware
 
