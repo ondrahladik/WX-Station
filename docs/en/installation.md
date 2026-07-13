@@ -1,3 +1,5 @@
+[← Back to index](./)
+
 # Firmware Upload
 
 WX-Station can be uploaded to your ESP32 in two ways:
