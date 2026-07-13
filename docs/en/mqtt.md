@@ -1,3 +1,5 @@
+[← Back to index](./)
+
 ## MQTT Data Format
 
 Measured data are published to the MQTT topic defined in the web configuration.  

@@ -1,3 +1,5 @@
+[← Zpět na rozcestník](./)
+
 ## Formát MQTT dat
 
 Naměřená data jsou publikována do MQTT topicu definovaného ve webové konfiguraci.
