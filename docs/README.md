@@ -1,4 +1,4 @@
-# WX-Station Dokumentace
+# WX-Station docs
 
 🇨🇿 Rozcestník dokumentace:
 
