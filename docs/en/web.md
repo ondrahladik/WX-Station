@@ -1,3 +1,5 @@
+# Web Configuration
+
 The web configuration is divided into several sections for configuring individual features. Each feature can be fully configured and, if desired, disabled. The individual configuration options are described below.
 
 ## MENU
