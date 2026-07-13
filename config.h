@@ -25,11 +25,15 @@ struct Config {
 
   // Data active
   bool activeLight;
+  bool activeRain;
   
   // Offset config
   float offsetTemp;
   float offsetHumi;
   float offsetPress;
+
+  // Rain config
+  float rainTipMm;
 
   // Server config
   bool serverActive0;

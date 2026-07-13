@@ -26,6 +26,7 @@ bool loadConfig() {
 
     // Data active
     config.activeLight = false; 
+    config.activeRain  = false;
 
     // Data config defaults
     config.dataTemp    = "temperature";
@@ -38,6 +39,9 @@ bool loadConfig() {
     config.offsetTemp  = 0.0;
     config.offsetHumi  = 0.0;
     config.offsetPress = 0.0;
+
+    // Rain config defaults
+    config.rainTipMm   = 0.2794;
 
     // SERVER config defaults
     config.serverActive0 = false;
@@ -112,6 +116,7 @@ bool loadConfig() {
 
   // Data active
   config.activeLight = doc["activeLight"]   | false;
+  config.activeRain  = doc["activeRain"]    | false;
 
   // Data config
   config.dataTemp    = doc["dataTemp"]    | "temperature";
@@ -124,6 +129,9 @@ bool loadConfig() {
   config.offsetTemp  = doc["offsetTemp"]  | 0.0;
   config.offsetHumi  = doc["offsetHumi"]  | 0.0;
   config.offsetPress = doc["offsetPress"] | 0.0;
+
+  // Rain config
+  config.rainTipMm   = doc["rainTipMm"]   | 0.2794;
 
   // SERVER config 
   config.serverActive0   = doc["serverActive0"]  | false;
@@ -184,6 +192,7 @@ bool saveConfig() {
   
   // Data active  
   doc["activeLight"] = config.activeLight;
+  doc["activeRain"]  = config.activeRain;
 
   // Data config
   doc["dataTemp"]    = config.dataTemp;
@@ -196,6 +205,9 @@ bool saveConfig() {
   doc["offsetTemp"]  = config.offsetTemp;
   doc["offsetHumi"]  = config.offsetHumi;
   doc["offsetPress"] = config.offsetPress;
+
+  // Rain config
+  doc["rainTipMm"]   = config.rainTipMm;
 
   // SERVER config
   doc["serverActive0"]    = config.serverActive0;
