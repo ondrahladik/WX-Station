@@ -1,3 +1,5 @@
+[← Zpět na rozcestník](./)
+
 # Webová konfigurace
 
 Webová konfigurace je rozdělena do několika sekcí pro nastavení jednotlivých funkcí. Každou funkci lze plně nakonfigurovat a případně také deaktivovat. Popis jednotlivých nastavení naleznete níže.
