@@ -1,6 +1,6 @@
 # WX-Station Dokumentace
 
-🇨🇿 Rozcestník dokumentace pro WX-Station: 
+🇨🇿 Rozcestník dokumentace:
 
 - [Hardware](./cz/hardware.md)
 - [Heartbeat](./cz/heartbeat.md)
@@ -8,7 +8,7 @@
 - [Formát MQTT dat](./cz/mqtt.md)
 - [Webová konfigurace](./cz/web.md)
 
-🇪🇳 Documentation index for WX-Station:
+🇪🇳 Documentation index:
 
 - [Hardware](./en/hardware.md)
 - [Heartbeat](./en/heartbeat.md)
