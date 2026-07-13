@@ -1,7 +1,7 @@
 # WX-Station Dokumentace
 
-🇨🇿 Pro anglickou verzi dokumentace klikněte [zde](../en/README.md).  
-🇪🇳 For English version of the documentation click [here](../en/README.md).
+🇨🇿 Pro anglickou verzi dokumentace klikněte [zde](../en/).  
+🇪🇳 For English version of the documentation click [here](../en/).
 
 Rozcestník dokumentace pro WX-Station:
 

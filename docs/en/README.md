@@ -1,7 +1,7 @@
 # WX-Station Documentation
 
-🇨🇿 Pro českou verzi dokumentace klikněte [zde](../cz/README.md).  
-🇪🇳 For Czech version of the documentation click [here](../cz/README.md).
+🇨🇿 Pro českou verzi dokumentace klikněte [zde](../cz/).  
+🇪🇳 For Czech version of the documentation click [here](../cz/).
 
 Documentation index for WX-Station:
 
