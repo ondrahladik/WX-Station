@@ -1,3 +1,5 @@
+[← Back to index](./)
+
 # Heartbeat
 
 Heartbeat serves as a simple visual indication of the station's status via an LED connected to an ESP32 GPIO output.

@@ -1,3 +1,5 @@
+[← Zpět na rozcestník](./)
+
 # Heartbeat
 
 Heartbeat slouží jako jednoduchá vizuální indikace stavu stanice pomocí LED připojené na GPIO výstup ESP32.
