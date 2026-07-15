@@ -12,9 +12,13 @@ The payload is sent in **JSON format**, for example:
   "humidity": 41.63,
   "pressure": 1023.17,
   "light": 320.35,
+  "rain_1h": 0.28,
+  "rain_24": 1.12,
   "rssi": -68
 }
 ```
+
+The keys `light`, `rain_1h`, and `rain_24` are sent only when the corresponding sensor is active in the web configuration.
 
 ---
 
