@@ -12,9 +12,13 @@ Payload je odesílán ve **formátu JSON**, například:
   "humidity": 41.63,
   "pressure": 1023.17,
   "light": 320.35,
+  "rain_1h": 0.28,
+  "rain_24": 1.12,
   "rssi": -68
 }
 ```
+
+Klíče `light`, `rain_1h` a `rain_24` se odesílají pouze tehdy, když je ve webové konfiguraci aktivní příslušné čidlo.
 
 ---
 
