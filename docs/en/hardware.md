@@ -12,7 +12,7 @@ This project is primarily created and developed for the standard ESP32. Many suc
 | --------------- | ------------------------------------------------------------------------------ | ------- | ------------------ | -------------- |
 | **BME280**      | Measures temperature, humidity, and pressure. Essential for station operation. | No      | 21 (SDA), 22 (SCL) | Required       |
 | **BH1750**      | Measures illuminance in lux (lx), converted to W/m² in the firmware.           | Yes     | 21 (SDA), 22 (SCL) | Optional       |
-| **MS-WH-SP-RG** | Tipping-bucket rain gauge for rainfall totals.                                | Yes     | 27                 | Optional       |
+| **MS-WH-SP-RG** | Tipping-bucket rain gauge for rainfall totals.                                 | Yes     | 27                 | Optional       |
 
 **MS-WH-SP-RG**
 

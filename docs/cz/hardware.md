@@ -12,7 +12,7 @@ Tento projekt je primárně vytvářen a vyvíjen pro standardní **ESP32**. Tyt
 | --------------- | ----------------------------------------------------------------------------------- | ----------- | ------------------ | --------- |
 | **BME280**      | Měří teplotu, vlhkost a atmosférický tlak. Je nezbytný pro provoz stanice.          | Ne          | 21 (SDA), 22 (SCL) | Povinný   |
 | **BH1750**      | Měří intenzitu osvětlení v luxech (lx), která je ve firmwaru přepočítávána na W/m². | Ano         | 21 (SDA), 22 (SCL) | Volitelný |
-| **MS-WH-SP-RG** | Překlápěcí srážkoměr pro měření úhrnu srážek.                                        | Ano         | 27                 | Volitelný |
+| **MS-WH-SP-RG** | Překlápěcí srážkoměr pro měření úhrnu srážek.                                       | Ano         | 27                 | Volitelný |
 
 **MS-WH-SP-RG**
 
