@@ -2,6 +2,7 @@
 #include <LittleFS.h>
 #include "config.h"
 #include "heartbeat.h"
+#include "rain.h"
 #include "web.h"
 
 extern const char* programVers;
@@ -29,6 +30,7 @@ void handleUpload() {
     }
     loadConfig();
     Heartbeat::setEnabled(config.activeHeartbeat);
+    RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
   }
 }
 
@@ -185,6 +187,24 @@ void handleRoot() {
           "</div>"
           "<div class='col-8'>"
             "<input type='text' class='form-control' name='dataLight' value='" + config.dataLight + "' placeholder='light'>"
+          "</div>"
+        "</div>"
+
+        // Rain
+        "<div class='row mb-3'>"
+          "<div class='col-4 d-flex align-items-center'>"
+            "<label class='col-form-label me-2'>Rain</label>"
+             "<div class='form-check form-switch m-0'>"
+              "<input class='form-check-input' type='checkbox' id='activeRain' name='activeRain' "
+              + String(config.activeRain ? "checked" : "")
+              + ">"
+            "</div>"
+          "</div>"
+          "<div class='col-8'>"
+            "<div class='input-group'>"
+              "<input type='number' step='0.0001' class='form-control' name='rainTipMm' value='" + String(config.rainTipMm, 4) + "' placeholder='0.2794'>"
+              "<span class='input-group-text'>mm/tip</span>"
+            "</div>"
           "</div>"
         "</div>"
 
@@ -541,6 +561,7 @@ void handleSave() {
 
   // ===== DATA =====
   config.activeLight = server.hasArg("activeLight");
+  config.activeRain  = server.hasArg("activeRain");
 
   if (server.hasArg("dataTemp"))  config.dataTemp  = server.arg("dataTemp");
   if (server.hasArg("dataHumi"))  config.dataHumi  = server.arg("dataHumi");
@@ -551,6 +572,7 @@ void handleSave() {
   if (server.hasArg("offsetTemp"))  config.offsetTemp  = server.arg("offsetTemp").toFloat();
   if (server.hasArg("offsetHumi"))  config.offsetHumi  = server.arg("offsetHumi").toFloat();
   if (server.hasArg("offsetPress")) config.offsetPress = server.arg("offsetPress").toFloat();
+  if (server.hasArg("rainTipMm"))   config.rainTipMm   = server.arg("rainTipMm").toFloat();
 
   // ===== SERVER =====
   config.serverActive0  = server.hasArg("serverActive0");
@@ -599,6 +621,7 @@ void handleSave() {
   // save config to file
   saveConfig();
   Heartbeat::setEnabled(config.activeHeartbeat);
+  RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
 
   // Redirect back to root
   server.sendHeader("Location", "/", true);
@@ -646,14 +669,17 @@ void setupWeb() {
       if (LittleFS.exists("/config.json")) {
           LittleFS.remove("/config.json"); 
       }
+      RainGauge::reset();
       loadConfig();
       Heartbeat::setEnabled(config.activeHeartbeat);
+      RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
       server.sendHeader("Location", "/", true);
       server.send(303, "text/plain", "");
   });
 
   // ====== Reboot ESP ======
   server.on("/reboot", HTTP_GET, []() {
+    RainGauge::flush();
     server.send(200, "text/plain", "Rebooting...");
     delay(500);
     ESP.restart();
