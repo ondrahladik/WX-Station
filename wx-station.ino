@@ -9,13 +9,15 @@
 #include <ArduinoJson.h>
 #include <WebServer.h>
 #include <BH1750.h>
+#include <time.h>
 #include <Wire.h>
 #include "config.h"
 #include "heartbeat.h"
+#include "rain.h"
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.4";
+const char* programVers = "v1.0.5";
 
 WiFiUDP udp;
 WiFiManager wm;
@@ -46,6 +48,7 @@ const unsigned long mqttReconnectInterval = 10000;
 const uint8_t maxConsecutiveBmeReadErrors = 5;
 const uint8_t maxConsecutiveLightReadErrors = 5;
 const unsigned long sensorRecoveryIntervalMs = 5000;
+const unsigned long ntpResyncIntervalMs = 6UL * 60UL * 60UL * 1000UL;
 const uint8_t bmeI2cAddress = 0x76;
 const uint8_t bh1750PrimaryAddress = 0x23;
 const uint8_t bh1750SecondaryAddress = 0x5C;
@@ -56,6 +59,12 @@ int rssi;
 Adafruit_BME280 bme;
 BH1750 lightSensor;  
 uint8_t activeBh1750Address = bh1750PrimaryAddress;
+unsigned long lastNtpSyncAttempt = 0;
+bool clockSynchronized = false;
+
+const char* ntpServerPrimary = "pool.ntp.org";
+const char* ntpServerSecondary = "time.google.com";
+const char* ntpServerTertiary = "time.cloudflare.com";
 
 void debugPrint(const String& msg, bool newline);
 void debugPrint(const char* msg, bool newline);
@@ -66,6 +75,7 @@ bool isI2CDeviceResponsive(uint8_t address);
 bool isBME280Responsive();
 bool isBH1750Responsive();
 void tryRecoverSensors();
+bool synchronizeClock(bool waitForSync = true);
 
 void refreshHeartbeatState() {
   if (fatalErrorActive || runtimeSensorFaultActive) {
@@ -240,6 +250,7 @@ void reconnectWiFi() {
         if (failedAttempts >= 9) {   
           debugPrint("REST | Reconnect failed too many times -> Restarting...", true);
           logToSyslog("REST | Reconnect failed too many times -> Restarting...");
+          RainGauge::flush();
           ESP.restart();
         }
       }
@@ -352,6 +363,49 @@ void tryRecoverSensors() {
       readLightSensor();
     }
   }
+}
+
+bool synchronizeClock(bool waitForSync) {
+  if (WiFi.status() != WL_CONNECTED) {
+    return false;
+  }
+
+  time_t now = time(nullptr);
+  if (now >= 1700000000) {
+    clockSynchronized = true;
+    return true;
+  }
+
+  unsigned long currentAttemptMs = millis();
+  if (!waitForSync && (currentAttemptMs - lastNtpSyncAttempt < ntpResyncIntervalMs)) {
+    return clockSynchronized;
+  }
+
+  lastNtpSyncAttempt = currentAttemptMs;
+  configTime(0, 0, ntpServerPrimary, ntpServerSecondary, ntpServerTertiary);
+
+  if (!waitForSync) {
+    return false;
+  }
+
+  debugPrint("TIME | Waiting for NTP sync...", true);
+  logToSyslog("TIME | Waiting for NTP sync...");
+
+  for (uint8_t attempt = 0; attempt < 20; attempt++) {
+    delay(500);
+    now = time(nullptr);
+    if (now >= 1700000000) {
+      clockSynchronized = true;
+      debugPrint("TIME | NTP synchronized.", true);
+      logToSyslog("TIME | NTP synchronized.");
+      return true;
+    }
+  }
+
+  clockSynchronized = false;
+  debugPrint("TIME | NTP sync timeout, continuing without confirmed time.", true);
+  logToSyslog("TIME | NTP sync timeout, continuing without confirmed time.");
+  return false;
 }
 
 void readSensorData() {
@@ -469,6 +523,12 @@ void sendInfoToDB() {
 }
 
 void sendDataToDB() {
+  String rainParam = "";
+  if (config.activeRain) {
+    rainParam = "&rain_1h=" + String(RainGauge::getRainLastHourMm(), 2);
+    rainParam += "&rain_24=" + String(RainGauge::getRainLast24HoursMm(), 2);
+  }
+
   // Server 1
   if (config.serverActive1) {
       String url = config.serverUrl1 + "?";
@@ -487,6 +547,7 @@ void sendDataToDB() {
       if (config.activeLight) {
         url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
       }
+      url += rainParam;
       url += "&" + String(config.dataRssi) + "=" + String(rssi);
 
       HTTPClient http;
@@ -524,6 +585,7 @@ void sendDataToDB() {
       if (config.activeLight) {
         url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
       }
+      url += rainParam;
       url += "&" + String(config.dataRssi) + "=" + String(rssi);
 
       HTTPClient http;
@@ -560,6 +622,7 @@ void sendDataToDB() {
       if (config.activeLight) {
         url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
       }
+      url += rainParam;
       url += "&" + String(config.dataRssi) + "=" + String(rssi);
 
       HTTPClient http;
@@ -600,26 +663,47 @@ void sendDataToAPRS() {
     float temperatureF = (temperature * 1.8) + 32;
 
     char sentence[180];
-
-    const char* format =
-        "%s>APRS,TCPIP*:@%02d%02d%02dz%s/%s_.../...t%03dh%02db%05d%s%s";
-
     char lightPart[10] = "";
+    char rainPart[8] = "";
+    char rain24Part[8] = "";
+
     if (config.activeLight) {
-        snprintf(lightPart, sizeof(lightPart), "L%03d", (int)lightWm2);
+      snprintf(lightPart, sizeof(lightPart), "L%03d", (int)lightWm2);
     }
 
-    snprintf(sentence, sizeof(sentence), format,
-            config.aprsCall,
-            0, 0, 0,
-            config.aprsLat,
-            config.aprsLon,
-            (int)temperatureF,
-            (int)humidity,
-            (int)(seaLevelPressure * 10),
-            lightPart,
-            config.aprsComment
-    );
+    if (config.activeRain) {
+      float rainLastHourInches = RainGauge::getRainLastHourMm() / 25.4f;
+      int rainHundredths = (int)roundf(rainLastHourInches * 100.0f);
+      if (rainHundredths < 0) {
+        rainHundredths = 0;
+      } else if (rainHundredths > 999) {
+        rainHundredths = 999;
+      }
+      snprintf(rainPart, sizeof(rainPart), "r%03d", rainHundredths);
+
+      float rainLast24HoursInches = RainGauge::getRainLast24HoursMm() / 25.4f;
+      int rain24Hundredths = (int)roundf(rainLast24HoursInches * 100.0f);
+      if (rain24Hundredths < 0) {
+        rain24Hundredths = 0;
+      } else if (rain24Hundredths > 999) {
+        rain24Hundredths = 999;
+      }
+      snprintf(rain24Part, sizeof(rain24Part), "p%03d", rain24Hundredths);
+    }
+
+    snprintf(sentence, sizeof(sentence),
+             "%s>APRS,TCPIP*:@%02d%02d%02dz%s/%s_.../...t%03dh%02db%05d%s%s%s%s",
+             config.aprsCall,
+             0, 0, 0,
+             config.aprsLat,
+             config.aprsLon,
+             (int)temperatureF,
+             (int)humidity,
+             (int)(seaLevelPressure * 10),
+             lightPart,
+             rainPart,
+             rain24Part,
+             config.aprsComment);
 
     // Sending
     client.println(sentence);
@@ -671,16 +755,20 @@ void publishToMQTT() {
     return;
   }
 
-  StaticJsonDocument<200> jsonDoc;
+  StaticJsonDocument<256> jsonDoc;
   jsonDoc[config.dataTemp]  = roundf(temperature * 100) / 100.0;
   jsonDoc[config.dataHumi]  = roundf(humidity * 100) / 100.0;
   jsonDoc[config.dataPress] = roundf(seaLevelPressure * 100) / 100.0;
   if (config.activeLight) {
-      jsonDoc[config.dataLight] = roundf(lightWm2 * 100) / 100.0;
+    jsonDoc[config.dataLight] = roundf(lightWm2 * 100) / 100.0;
+  }
+  if (config.activeRain) {
+    jsonDoc["rain_1h"] = roundf(RainGauge::getRainLastHourMm() * 100) / 100.0;
+    jsonDoc["rain_24"] = roundf(RainGauge::getRainLast24HoursMm() * 100) / 100.0;
   }
   jsonDoc[config.dataRssi]  = rssi;
 
-  char jsonBuffer[256];
+  char jsonBuffer[320];
   serializeJson(jsonDoc, jsonBuffer);
 
   if (config.mqttTopicPub1.length() > 0) {
@@ -709,6 +797,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
   if (message.equalsIgnoreCase("reboot")) {
     debugPrint("MQTT | RECV OK | Command RESET -> Restarting ESP...", true);
     logToSyslog("MQTT | RECV OK | Command RESET -> Restarting ESP...");
+    RainGauge::flush();
     ESP.restart();
   } 
   else if (message.equalsIgnoreCase("start-ap")) {
@@ -810,6 +899,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
       outFile.close();
       loadConfig();
       Heartbeat::setEnabled(config.activeHeartbeat);
+      RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
       
       mqttClient.publish(config.mqttTopicPub2.c_str(), "set(config) OK");
       debugPrint("MQTT | RECV OK | set(config) -> Full config replaced", true);
@@ -848,7 +938,8 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
     bool hasDecimal = (valueParsed.indexOf('.') >= 0);
     
     // Fields that allow float values
-    bool isFloatField = (key == "altitude" || key == "offsetTemp" || key == "offsetHumi" || key == "offsetPress");
+    bool isFloatField = (key == "altitude" || key == "offsetTemp" || key == "offsetHumi" ||
+                         key == "offsetPress" || key == "rainTipMm");
     
     if (doc.containsKey(key)) {
       JsonVariant existing = doc[key];
@@ -882,6 +973,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
       outFile.close();
       loadConfig();
       Heartbeat::setEnabled(config.activeHeartbeat);
+      RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
       
       String response = "set(" + key + "=" + value + ") OK";
       mqttClient.publish(config.mqttTopicPub2.c_str(), response.c_str());
@@ -919,6 +1011,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
           debugPrint(" OTA | UPDATE OK | Restarting...", true);
           logToSyslog(" OTA | UPDATE OK | Restarting...");
           delay(1000);
+          RainGauge::flush();
           ESP.restart(); 
           break;
       }
@@ -944,9 +1037,12 @@ void setup() {
   if (!wm.autoConnect("WX-StationAP")) {
     debugPrint("REST | Failed to connect, restarting...", true);
     logToSyslog("REST | Failed to connect, restarting...");
+    RainGauge::flush();
     ESP.restart();
   }
   setAccessPointMode(false);
+  synchronizeClock(true);
+  RainGauge::begin(config.activeRain, config.rainTipMm);
 
   if (!initBME280()) {
       setRuntimeSensorFault("SENS | BME280 initialization failed.");
@@ -1005,6 +1101,7 @@ void setup() {
 // ====== Loop ======
 void loop() {
   Heartbeat::update();
+  RainGauge::update();
 
   if (fatalErrorActive) {
     return;
@@ -1025,11 +1122,13 @@ void loop() {
     debugPrint("REST | Periodic restart...", true);
     logToSyslog("REST | Periodic restart...");
     delay(1000);
+    RainGauge::flush();
     ESP.restart();
   }
 
   // Wi-Fi watchdog 
   reconnectWiFi(); 
+  synchronizeClock(false);
 
   // Read sensor
   if (now - lastSensorRead >= intervalSensor) {
