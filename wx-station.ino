@@ -526,7 +526,7 @@ void sendDataToDB() {
   String rainParam = "";
   if (config.activeRain) {
     rainParam = "&rain_1h=" + String(RainGauge::getRainLastHourMm(), 2);
-    rainParam += "&rain_24=" + String(RainGauge::getRainLast24HoursMm(), 2);
+    rainParam += "&rain_24h=" + String(RainGauge::getRainLast24HoursMm(), 2);
   }
 
   // Server 1
@@ -764,7 +764,7 @@ void publishToMQTT() {
   }
   if (config.activeRain) {
     jsonDoc["rain_1h"] = roundf(RainGauge::getRainLastHourMm() * 100) / 100.0;
-    jsonDoc["rain_24"] = roundf(RainGauge::getRainLast24HoursMm() * 100) / 100.0;
+    jsonDoc["rain_24h"] = roundf(RainGauge::getRainLast24HoursMm() * 100) / 100.0;
   }
   jsonDoc[config.dataRssi]  = rssi;
 
