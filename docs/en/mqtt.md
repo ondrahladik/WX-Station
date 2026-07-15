@@ -13,7 +13,7 @@ The payload is sent in **JSON format**, for example:
   "pressure": 1023.17,
   "light": 320.35,
   "rain_1h": 0.28,
-  "rain_24": 1.12,
+  "rain_24h": 1.12,
   "rssi": -68
 }
 ```
