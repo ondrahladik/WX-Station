@@ -28,6 +28,7 @@ The web configuration is divided into several sections for configuring individua
 * **Temp, Humi, Press:** The names used for temperature, humidity, and pressure when sending HTTP GET parameters and as JSON keys in MQTT messages.
 * **Offset:** Used to calibrate temperature, humidity, and pressure. Both positive and negative values are supported.
 * **Light 🔹:** The name used for the light sensor when sending HTTP GET parameters and as the JSON key in MQTT messages.
+* **Rain 🔹:** Rain gauge calibration, meaning how many millimeters of rainfall correspond to one bucket tip. The default value is `0.2794`.
 * **RSSI:** Like the other values, this defines the name used for Wi-Fi signal strength when sending data to the database and MQTT.
 
 🔹 This item can be disabled using the switch next to its name.

@@ -28,6 +28,7 @@ Webová konfigurace je rozdělena do několika sekcí pro nastavení jednotlivý
 * **Temp, Humi, Press:** Název teploty, vlhkosti a tlaku používaný při odesílání HTTP GET parametrů i jako JSON klíč při odesílání dat přes MQTT.
 * **Offset:** Slouží ke korekci teploty, vlhkosti a tlaku. Lze zadat kladné i záporné hodnoty.
 * **Light 🔹:** Název světelného senzoru používaný při odesílání HTTP GET parametrů i jako JSON klíč v MQTT.
+* **Rain 🔹:** Kalibrace srážkoměru, tedy kolik milimetrů srážek odpovídá jednomu překlopení. Výchozí hodnota je `0.2794`.   
 * **RSSI:** Stejně jako u ostatních hodnot slouží k nastavení názvu síly Wi-Fi signálu při odesílání dat do databáze a MQTT.
 
 🔹 Tuto položku lze deaktivovat pomocí přepínače vedle názvu.
