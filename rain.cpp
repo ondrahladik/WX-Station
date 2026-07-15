@@ -25,6 +25,7 @@ volatile unsigned long pulseLowStartedAtMs = 0;
 volatile unsigned long lastAcceptedPulseAtMs = 0;
 
 bool enabled = false;
+bool interruptAttached = false;
 float tipMm = 0.2794f;
 uint32_t totalTips = 0;
 uint32_t rain1hTips = 0;
@@ -149,12 +150,22 @@ void IRAM_ATTR handleTipSignalChange() {
 }
 
 void detachGaugeInterrupt() {
+  if (!interruptAttached) {
+    return;
+  }
+
   detachInterrupt(digitalPinToInterrupt(kRainGaugePin));
+  interruptAttached = false;
 }
 
 void attachGaugeInterrupt() {
+  if (interruptAttached) {
+    return;
+  }
+
   pinMode(kRainGaugePin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(kRainGaugePin), handleTipSignalChange, CHANGE);
+  interruptAttached = true;
 }
 
 bool loadState() {
