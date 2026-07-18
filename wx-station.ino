@@ -63,6 +63,8 @@ BH1750 lightSensor;
 uint8_t activeBh1750Address = bh1750PrimaryAddress;
 unsigned long lastNtpSyncAttempt = 0;
 bool clockSynchronized = false;
+String debugLogBuffer;
+const size_t maxDebugLogBufferLength = 12000;
 
 const char* ntpServerPrimary = "pool.ntp.org";
 const char* ntpServerSecondary = "time.google.com";
@@ -71,6 +73,7 @@ const char* ntpServerTertiary = "time.cloudflare.com";
 void debugPrint(const String& msg, bool newline);
 void debugPrint(const char* msg, bool newline);
 void logToSyslog(const char* message);
+void appendDebugLog(const String& msg, bool newline);
 bool initBME280(uint8_t attempts = 5, bool waitBetweenAttempts = true);
 bool initBH1750(uint8_t attempts = 5, bool waitBetweenAttempts = true);
 bool isI2CDeviceResponsive(uint8_t address);
@@ -137,10 +140,28 @@ void onConfigPortalStarted(WiFiManager* wifiManager) {
   setAccessPointMode(true);
 }
 
+void appendDebugLog(const String& msg, bool newline) {
+  if (!config.debugMode) return;
+
+  debugLogBuffer += msg;
+  if (newline) {
+    debugLogBuffer += "\n";
+  }
+
+  if (debugLogBuffer.length() > maxDebugLogBufferLength) {
+    debugLogBuffer.remove(0, debugLogBuffer.length() - maxDebugLogBufferLength);
+  }
+}
+
+String getDebugLogBuffer() {
+  return debugLogBuffer;
+}
+
 // ====== Functions ======
 void debugPrint(const String& msg, bool newline = false) {
   if (!config.debugMode) return;
 
+  appendDebugLog(msg, newline);
   if (newline) Serial.println(msg);
   else Serial.print(msg);
 }
@@ -148,12 +169,16 @@ void debugPrint(const String& msg, bool newline = false) {
 void debugPrint(const char* msg, bool newline = false) {
   if (!config.debugMode) return;
 
+  appendDebugLog(String(msg), newline);
   if (newline) Serial.println(msg);
   else Serial.print(msg);
 }
 
 void debugPrintln() {
-  if (config.debugMode) Serial.println();
+  if (config.debugMode) {
+    appendDebugLog("", true);
+    Serial.println();
+  }
 }
 
 void logToSyslog(const char* message) {
