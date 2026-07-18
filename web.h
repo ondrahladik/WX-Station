@@ -8,6 +8,7 @@ extern WebServer server;
 extern bool loadConfig();
 extern bool saveConfig();
 extern void startCaptivePortal();
+extern String getDebugLogBuffer();
 
 void setupWeb();       
 void handleRoot();   
