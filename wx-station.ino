@@ -144,7 +144,7 @@ void appendDebugLog(const String& msg, bool newline) {
   if (!config.debugMode) return;
 
   debugLogBuffer += msg;
-  if (newline) {
+  if (newline || debugLogBuffer.length() == 0 || debugLogBuffer[debugLogBuffer.length() - 1] != '\n') {
     debugLogBuffer += "\n";
   }
 
@@ -157,11 +157,15 @@ String getDebugLogBuffer() {
   return debugLogBuffer;
 }
 
+void clearDebugLogBuffer() {
+  debugLogBuffer = "";
+}
+
 // ====== Functions ======
 void debugPrint(const String& msg, bool newline = false) {
   if (!config.debugMode) return;
 
-  appendDebugLog(msg, newline);
+  appendDebugLog(msg, true);
   if (newline) Serial.println(msg);
   else Serial.print(msg);
 }
@@ -169,7 +173,7 @@ void debugPrint(const String& msg, bool newline = false) {
 void debugPrint(const char* msg, bool newline = false) {
   if (!config.debugMode) return;
 
-  appendDebugLog(String(msg), newline);
+  appendDebugLog(String(msg), true);
   if (newline) Serial.println(msg);
   else Serial.print(msg);
 }

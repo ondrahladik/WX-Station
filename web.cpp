@@ -208,7 +208,7 @@ String buildNavbar(const String& activePath, bool showSaveButton = false) {
               "<a class='nav-link dropdown-toggle' href='#' id='moreDropdown' role='button' data-bs-toggle='dropdown' aria-expanded='false'>More</a>"
               "<ul class='dropdown-menu dropdown-menu-end' aria-labelledby='moreDropdown'>"
                 "<li><a class='dropdown-item' href='/debug'>Debug</a></li>"
-                "<li><a class='dropdown-item' href='/config.json' target='_blank'>config.json</a></li>"
+                "<li><a class='dropdown-item' href='/config.json' target='_blank'>Config</a></li>"
               "</ul>"
             "</li>"
           "</ul>";
@@ -317,6 +317,11 @@ String buildDashboardRefreshScript() {
 String buildDebugRefreshScript() {
   return String()
     + "<script>"
+      "async function clearDebugLog(){"
+        "const result=await Swal.fire(Object.assign({},swalTheme,{icon:'warning',title:'Clear debug log?',text:'Stored web debug output will be removed.',showCancelButton:true,confirmButtonText:'Clear',cancelButtonText:'Cancel'}));"
+        "if(!result.isConfirmed)return;"
+        "try{await fetch('/debug/clear',{method:'POST'});refreshDebugLog();showToast('success','Log cleared','Debug output has been removed.');}catch(e){}"
+      "}"
       "async function refreshDebugLog(){"
         "try{"
           "const response=await fetch('/debug/logs',{cache:'no-store'});"
@@ -720,7 +725,10 @@ String buildDebugPage() {
     "<div class='panel'>"
       "<div class='d-flex justify-content-between align-items-center mb-3'>"
         "<h5 class='mb-0'><i class='bi bi-terminal'></i> Debug</h5>"
-        + formatBoolBadge(config.debugMode, "Live", "Debug off")
+        "<div class='d-flex align-items-center gap-2'>"
+          + formatBoolBadge(config.debugMode, "Live", "Debug off")
+          + "<button type='button' class='btn btn-sm btn-outline-light' onclick='clearDebugLog()'>Clear log</button>"
+        "</div>"
       + "</div>"
       "<div class='mini-note mb-3'>This page mirrors the serial debug output. Refresh is automatic every 2 seconds.</div>"
       "<div id='debug-log' class='form-control' style='height:60vh; overflow:auto; white-space:pre-wrap; font-family:monospace;'>"
@@ -772,6 +780,11 @@ void handleDebug() {
 
 void handleDebugLogs() {
   server.send(200, "text/html", logEscape(getDebugLogBuffer()));
+}
+
+void handleDebugClear() {
+  clearDebugLogBuffer();
+  server.send(200, "text/plain", "OK");
 }
 
 void handleStatus() {
@@ -855,6 +868,7 @@ void setupWeb() {
   server.on("/setting", handleSettings);
   server.on("/debug", handleDebug);
   server.on("/debug/logs", HTTP_GET, handleDebugLogs);
+  server.on("/debug/clear", HTTP_POST, handleDebugClear);
   server.on("/status", HTTP_GET, handleStatus);
   server.on("/save", HTTP_POST, handleSave);
 

@@ -9,6 +9,7 @@ extern bool loadConfig();
 extern bool saveConfig();
 extern void startCaptivePortal();
 extern String getDebugLogBuffer();
+extern void clearDebugLogBuffer();
 
 void setupWeb();       
 void handleRoot();   
