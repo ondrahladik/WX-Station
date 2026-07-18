@@ -8,6 +8,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <WebServer.h>
+#include <ESPmDNS.h>
 #include <BH1750.h>
 #include <time.h>
 #include <Wire.h>
@@ -17,7 +18,8 @@
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.5";
+const char* programVers = "v1.0.6";
+const char* localHostname = "wx";
 
 WiFiUDP udp;
 WiFiManager wm;
@@ -76,6 +78,7 @@ bool isBME280Responsive();
 bool isBH1750Responsive();
 void tryRecoverSensors();
 bool synchronizeClock(bool waitForSync = true);
+void startMDNSService();
 
 void refreshHeartbeatState() {
   if (fatalErrorActive || runtimeSensorFaultActive) {
@@ -220,6 +223,7 @@ void startCaptivePortal() {
   wm.setTitle("WX Station");
   wm.startConfigPortal("WX-StationAP");  
   setAccessPointMode(false);
+  startMDNSService();
 
   server.begin();
   debugPrint("Web server turned on", true);
@@ -259,9 +263,25 @@ void reconnectWiFi() {
     if (reconnecting) {
       debugPrint("WiFi | Reconnected!", true);
       logToSyslog("WiFi | Reconnected!");
+      startMDNSService();
       reconnecting = false;
       failedAttempts = 0;
     }
+  }
+}
+
+void startMDNSService() {
+  if (WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+
+  MDNS.end();
+
+  if (MDNS.begin(localHostname)) {
+    MDNS.addService("http", "tcp", 80);
+  } else {
+    debugPrint("mDNS | Failed to start", true);
+    logToSyslog("mDNS | Failed to start");
   }
 }
 
@@ -1041,6 +1061,7 @@ void setup() {
     ESP.restart();
   }
   setAccessPointMode(false);
+  startMDNSService();
   synchronizeClock(true);
   RainGauge::begin(config.activeRain, config.rainTipMm);
 
