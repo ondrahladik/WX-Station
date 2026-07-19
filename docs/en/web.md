@@ -1,6 +1,6 @@
 [← Back to index](./)
 
-# Web Configuration
+# Web server
 
 The web configuration is divided into several sections for configuring individual features. Each feature can be fully configured and, if desired, disabled. The individual configuration options are described below.
 
@@ -23,12 +23,14 @@ The web configuration is divided into several sections for configuring individua
   * **Config:** Opens the `config.json` file in a new browser tab.
 * **Save:** Saves the entire configuration. A restart is normally not required after saving.
 
-## STATION
+## Settings (/setting)
+
+### STATION
 
 * **Name:** The station name used only for identification in Syslog and the MQTT PUB/SUB client. This is especially useful if you operate multiple stations.
 * **ASL:** The station altitude above sea level in meters. It is used to calculate sea-level pressure correctly.
 
-## DATA
+### DATA
 
 * **Temp, Humi, Press:** The names used for temperature, humidity, and pressure when sending HTTP GET parameters and as JSON keys in MQTT messages.
 * **Offset:** Used to calibrate temperature, humidity, and pressure. Both positive and negative values are supported.
@@ -38,7 +40,7 @@ The web configuration is divided into several sections for configuring individua
 
 🔹 This item can be disabled using the switch next to its name.
 
-## SERVER
+### SERVER
 
 The firmware can send data via HTTP GET to up to three different servers and one information server.
 
@@ -52,7 +54,7 @@ Examples:
 * `http://example.com/wx.php`
 * `http://example.com/`
 
-## APRS
+### APRS
 
 Sends weather data to the APRS-IS network. Only temperature, humidity, and pressure are transmitted.
 
@@ -64,7 +66,7 @@ Sends weather data to the APRS-IS network. Only temperature, humidity, and press
 * **Lon:** Longitude in APRS format, for example `01551.39E` (equivalent to `15°51.39'E`).
 * **Comment:** Any comment you want to include with your APRS station.
 
-## MQTT
+### MQTT
 
 Sends all measurement data to an MQTT server in JSON format. This is ideal for real-time processing, such as displaying data on external screens or other hardware.
 
@@ -74,23 +76,23 @@ Sends all measurement data to an MQTT server in JSON format. This is ideal for r
 * **Pub Topic 2:** Topic where the response to the MQTT `get()` command is published.
 * **Sub Topic:** Topic on which the station listens for plain-text commands. Two topics can be configured—for example, one dedicated to a single station and another for controlling multiple stations simultaneously.
 
-## SYSLOG
+### SYSLOG
 
 All station activity is logged to a Syslog server. It provides functionality similar to Debug mode but does not require the station to be physically connected to a computer.
 
 * **Server:** Syslog server address.
 * **Port:** Syslog server port, typically **514**.
 
-## INTERVAL
+### INTERVAL
 
 * **Reboot:** Automatic restart interval. It can be set to **6, 12, 24, or 48 hours**. This helps prevent lockups and ensures long-term reliable operation.
 * **Server, APRS, MQTT:** Transmission intervals for the HTTP servers, APRS, and MQTT.
 
-## HEARTBEAT
+### HEARTBEAT
 
 The heartbeat LED indicates the current operating status of the station. It is an optional but useful feature. More information is available on the **Heartbeat** page.
 
-## DEBUG
+### DEBUG
 
 Debug mode prints diagnostic messages to the serial interface and also exposes them on the **Debug** page in the web interface, making troubleshooting and debugging easier.
 
