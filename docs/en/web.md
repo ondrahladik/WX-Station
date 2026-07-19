@@ -29,6 +29,8 @@ A summary of current sensor values and station status. Values refresh automatica
 
 ## Settings (`/setting`)
 
+Full station configuration.
+
 ### STATION
 
 * **Name:** The station name used only for identification in Syslog and the MQTT PUB/SUB client. This is especially useful if you operate multiple stations.

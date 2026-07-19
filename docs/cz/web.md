@@ -29,6 +29,8 @@ Přehled aktuálních hodnot ze senzorů a stavu stanice. Hodnoty se automaticky
 
 ## Nastavení (`/setting`)
 
+Kompletní konfigurace stanice.
+
 ### STANICE
 
 * **Název:** Název stanice používaný pouze pro identifikaci v Syslogu a MQTT PUB/SUB klientovi. Je užitečný zejména při provozu více stanic.
