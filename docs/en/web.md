@@ -23,7 +23,11 @@ The web configuration is divided into several sections for configuring individua
   * **Config:** Opens the `config.json` file in a new browser tab.
 * **Save:** Saves the entire configuration. A restart is normally not required after saving.
 
-## Settings (/setting)
+## Dashboard (`/`)
+
+A summary of current sensor values and station status. Values refresh automatically every 5 minutes.
+
+## Settings (`/setting`)
 
 ### STATION
 

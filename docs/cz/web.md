@@ -23,7 +23,11 @@ Webová konfigurace je rozdělena do několika sekcí pro nastavení jednotlivý
   * **Config:** Otevře soubor `config.json` v novém okně.
 * **Uložit:** Uloží veškerou konfiguraci. Po uložení není nutné stanici restartovat.
 
-## Nastavení (/setting)
+## Dashboard (`/`)
+
+Přehled aktuálních hodnot ze senzorů a stavu stanice. Hodnoty se automaticky obnovují každých 5 minut.
+
+## Nastavení (`/setting`)
 
 ### STANICE
 
