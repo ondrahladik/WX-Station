@@ -18,7 +18,7 @@ Payload je odesílán ve **formátu JSON**, například:
 }
 ```
 
-Klíče `light`, `rain_1h` a `rain_24` se odesílají pouze tehdy, když je ve webové konfiguraci aktivní příslušné čidlo.
+Klíče `light`, `rain_1h` a `rain_24h` se odesílají pouze tehdy, když je ve webové konfiguraci aktivní příslušné čidlo.
 
 ---
 
