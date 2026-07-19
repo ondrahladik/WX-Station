@@ -9,4 +9,4 @@ Rozcestník dokumentace pro WX-Station:
 - [Heartbeat](./heartbeat.md)
 - [Nahrání firmware](./installation.md)
 - [Formát MQTT dat](./mqtt.md)
-- [Webová konfigurace](./web.md)
+- [Webový server](./web.md)

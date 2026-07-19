@@ -7,6 +7,6 @@ Documentation index for WX-Station:
 
 - [Hardware](./hardware.md)
 - [Heartbeat](./heartbeat.md)
-- [Firmware Upload](./installation.md)
-- [MQTT Data Format](./mqtt.md)
-- [Web Configuration](./web.md)
+- [Firmware upload](./installation.md)
+- [MQTT data format](./mqtt.md)
+- [Web server](./web.md)
