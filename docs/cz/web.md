@@ -2,7 +2,7 @@
 
 # Webový server
 
-Webová konfigurace je rozdělena do několika sekcí pro nastavení jednotlivých funkcí. Každou funkci lze plně nakonfigurovat a případně také deaktivovat. Popis jednotlivých nastavení naleznete níže.
+Webové rozhraní je v lokální síti dostupné na adrese `http://wx.local/` nebo přímo na IP adrese stanice.
 
 ## MENU
 
