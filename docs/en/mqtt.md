@@ -1,6 +1,6 @@
 [← Back to index](./)
 
-## MQTT Data Format
+## MQTT data format
 
 Measured data are published to the MQTT topic defined in the web configuration.  
 
@@ -18,7 +18,7 @@ The payload is sent in **JSON format**, for example:
 }
 ```
 
-The keys `light`, `rain_1h`, and `rain_24` are sent only when the corresponding sensor is active in the web configuration.
+The keys `light`, `rain_1h`, and `rain_24h` are sent only when the corresponding sensor is active in the web configuration.
 
 ---
 
