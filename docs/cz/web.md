@@ -105,3 +105,7 @@ Debug režim vypisuje diagnostické zprávy na sériové rozhraní a zároveň j
 Pro zobrazení výpisu stačí připojit stanici pomocí USB kabelu a otevřít sériový monitor například v Arduino IDE nebo využít online monitor na **serial.ok1kky.cz**.
 
 Komunikační rychlost (baud rate) musí být nastavena na **115200**.
+
+## Debug (`/debug`)
+
+Průběžný výpis debug logů podobně jako v sériovém monitoru. Stránka se automaticky obnovuje každé 2 sekundy.

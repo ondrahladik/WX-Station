@@ -105,3 +105,7 @@ Debug mode prints diagnostic messages to the serial interface and also exposes t
 Simply connect the station to a computer using a USB cable and open a serial monitor, such as the one in the Arduino IDE, or use the online monitor at **serial.ok1kky.cz**.
 
 The serial baud rate must be set to **115200**.
+
+## Debug (`/debug`)
+
+Live debug log output similar to the serial monitor. The page refreshes automatically every 2 seconds.
