@@ -6,6 +6,8 @@ The web configuration is divided into several sections for configuring individua
 
 ## MENU
 
+* **Dashboard:** Opens the main station overview with current values.
+* **Settings:** Opens the full device configuration page.
 * **Backup**
 
   * **Download:** Downloads the JSON configuration file for backup purposes.
@@ -15,7 +17,10 @@ The web configuration is divided into several sections for configuring individua
   * **WiFi Manager:** Activates WiFi Manager to change the Wi-Fi SSID and password. *(The web configuration interface is unavailable while WiFi Manager is running.)*
   * **Factory Reset:** Restores the factory default settings.
   * **Reboot:** Restarts the WX station.
-* **config.json:** Opens the `config.json` file in a new browser tab.
+* **More**
+
+  * **Debug:** Opens the live debug log page.
+  * **Config:** Opens the `config.json` file in a new browser tab.
 * **Save:** Saves the entire configuration. A restart is normally not required after saving.
 
 ## STATION
@@ -87,7 +92,7 @@ The heartbeat LED indicates the current operating status of the station. It is a
 
 ## DEBUG
 
-Debug mode prints diagnostic messages to the serial interface, making troubleshooting and debugging easier.
+Debug mode prints diagnostic messages to the serial interface and also exposes them on the **Debug** page in the web interface, making troubleshooting and debugging easier.
 
 Simply connect the station to a computer using a USB cable and open a serial monitor, such as the one in the Arduino IDE, or use the online monitor at **serial.ok1kky.cz**.
 

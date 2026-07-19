@@ -6,6 +6,8 @@ Webová konfigurace je rozdělena do několika sekcí pro nastavení jednotlivý
 
 ## MENU
 
+* **Dashboard:** Otevře hlavní přehled stanice s aktuálními hodnotami.
+* **Settings:** Otevře stránku s kompletní konfigurací zařízení.
 * **Záloha**
 
   * **Stáhnout:** Stáhne konfigurační soubor JSON pro zálohu nastavení.
@@ -15,7 +17,10 @@ Webová konfigurace je rozdělena do několika sekcí pro nastavení jednotlivý
   * **WiFi Manager:** Aktivuje WiFi Manager pro změnu názvu Wi-Fi sítě (SSID) a hesla. *(Po dobu běhu WiFi Manageru není konfigurační webové rozhraní dostupné.)*
   * **Obnovit tovární nastavení:** Obnoví výchozí nastavení zařízení.
   * **Restart:** Restartuje stanici WX.
-* **config.json:** Otevře soubor `config.json` v novém okně.
+* **More**
+
+  * **Debug:** Otevře stránku s živým debug výpisem.
+  * **Config:** Otevře soubor `config.json` v novém okně.
 * **Uložit:** Uloží veškerou konfiguraci. Po uložení není nutné stanici restartovat.
 
 ## STANICE
@@ -87,7 +92,7 @@ Heartbeat využívá LED diodu pro indikaci aktuálního stavu stanice. Jedná s
 
 ## DEBUG
 
-Debug režim vypisuje diagnostické zprávy na sériové rozhraní, což usnadňuje ladění programu a odhalování chyb.
+Debug režim vypisuje diagnostické zprávy na sériové rozhraní a zároveň je zpřístupňuje i na stránce **Debug** ve webovém rozhraní, což usnadňuje ladění programu a odhalování chyb.
 
 Pro zobrazení výpisu stačí připojit stanici pomocí USB kabelu a otevřít sériový monitor například v Arduino IDE nebo využít online monitor na **serial.ok1kky.cz**.
 
