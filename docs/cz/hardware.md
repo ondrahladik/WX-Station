@@ -8,11 +8,11 @@ Tento projekt je primárně vytvářen a vyvíjen pro standardní **ESP32**. Tyt
 
 ## Senzory
 
-| Senzor          | Popis                                         | ESP32              | ESP32-C3           | Poznámka  |
-| --------------- | --------------------------------------------- | ------------------ | ------------------ | --------- |
-| **BME280**      | Měří teplotu, vlhkost a atmosférický tlak.    | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Povinný   |
-| **BH1750**      | Měří intenzitu osvětlení.                     | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Volitelný |
-| **MS-WH-SP-RG** | Překlápěcí srážkoměr pro měření úhrnu srážek. | 27                 | Není podporován    | Volitelný |
+| Senzor          | Popis                                 | ESP32              | ESP32-C3           | Poznámka  |
+| --------------- | ------------------------------------- | ------------------ | ------------------ | --------- |
+| **BME280**      | Teplota, vlhkost a atmosférický tlak. | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Povinný   |
+| **BH1750**      | Intenzitu osvětlení.                  | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Volitelný |
+| **MS-WH-SP-RG** | Srážkoměr pro měření úhrnu srážek.    | 27                 | Není podporován    | Volitelný |
 
 **MS-WH-SP-RG**
 
@@ -26,6 +26,8 @@ Poznámky k implementaci:
 - Každý překlop se ukládá s časovou značkou do `LittleFS`, takže se po restartu obnoví posledních 24 hodin historie srážek.
 - Firmware filtruje chybné pulzy pomocí minimální a maximální délky sepnutí a krátkého ochranného intervalu mezi dvěma platnými pulzy.
 - Výchozí kalibrace je `0.2794 mm/tip`, ale lze ji změnit ve webové konfiguraci.
+
+Pro funkčnost srážkoměru na ESP32-C3 je nutné kódu změnit GPIO pin, protože ESP32-C3 má jinou konfiguraci pinů než ESP32. V současné době je podporován pouze ESP32 s GPIO 27.
 
 ## Ostatní
 
