@@ -8,7 +8,7 @@ This project is primarily created and developed for the standard ESP32. Many suc
 
 ## Sensors
 
-| Sensor          | Description                                                                    | Disable | GPIO               | Notes          |
+| Sensor          | Description                                                                    | Disable | GPIO               | Note           |
 | --------------- | ------------------------------------------------------------------------------ | ------- | ------------------ | -------------- |
 | **BME280**      | Measures temperature, humidity, and pressure. Essential for station operation. | No      | 21 (SDA), 22 (SCL) | Required       |
 | **BH1750**      | Measures illuminance in lux (lx), converted to W/m² in the firmware.           | Yes     | 21 (SDA), 22 (SCL) | Optional       |
@@ -29,6 +29,6 @@ Implementation notes:
 
 ## Other
 
-| Name            | Description                                                                    | Disable | GPIO      | Notes          |
-| --------------- | ------------------------------------------------------------------------------ | ------- | --------- | -------------- |
-| **LED diode**   | It is used for the heartbeat function.                                         | Yes     | 2         | Optional       |
+| Name          | Description                            | GPIO  | Note      |
+| ------------- | -------------------------------------- | ----- | --------- |
+| **LED diode** | It is used for the heartbeat function. | 2     | Optional  |

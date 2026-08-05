@@ -8,11 +8,11 @@ Tento projekt je primárně vytvářen a vyvíjen pro standardní **ESP32**. Tyt
 
 ## Senzory
 
-| Senzor          | Popis                                 | ESP32              | ESP32-C3           | Poznámka  |
-| --------------- | ------------------------------------- | ------------------ | ------------------ | --------- |
-| **BME280**      | Teplota, vlhkost a atmosférický tlak  | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Povinný   |
-| **BH1750**      | Luxmetr                               | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Volitelný |
-| **MS-WH-SP-RG** | Srážkoměr                             | 27                 | Není podporován    | Volitelný |
+| Senzor          | Popis                                 | ESP32              | ESP32-C3         | Poznámka  |
+| --------------- | ------------------------------------- | ------------------ | ---------------- | --------- |
+| **BME280**      | Teplota, vlhkost a atmosférický tlak  | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Povinný   |
+| **BH1750**      | Luxmetr                               | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Volitelný |
+| **MS-WH-SP-RG** | Srážkoměr                             | 27                 | Není podporován  | Volitelný |
 
 **MS-WH-SP-RG**
 
@@ -31,6 +31,6 @@ Pro funkčnost srážkoměru na ESP32-C3 je nutné kódu změnit GPIO pin, proto
 
 ## Ostatní
 
-| Název         | Popis                       | ESP32, ESP32-C3  | Poznámka  |
-| ------------- | --------------------------- | ---------------- | --------- |
-| **LED dioda** | Slouží pro funkci Heartbeat | 2                | Volitelná |
+| Název         | Popis                       | GPIO  | Poznámka  |
+| ------------- | --------------------------- | ----- | --------- |
+| **LED dioda** | Slouží pro funkci Heartbeat | 2     | Volitelná |
