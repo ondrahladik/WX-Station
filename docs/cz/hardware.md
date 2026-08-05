@@ -4,15 +4,15 @@
 
 ## Mikrokontrolér
 
-Tento projekt je primárně vytvářen a vyvíjen pro standardní **ESP32**. Tyto desky vyrábí mnoho výrobců, obecně však doporučuji desku označenou jako **ESP-WROOM-32**.
+Tento projekt je primárně vytvářen a vyvíjen pro standardní **ESP32**. Tyto desky vyrábí mnoho výrobců, obecně však doporučuji desku označenou jako **ESP-WROOM-32**. Nově je podporován i **ESP32-C3** (např. ESP32-C3 Super Mini).
 
 ## Senzory
 
-| Senzor          | Popis                                                                               | Lze vypnout | GPIO               | Poznámka  |
-| --------------- | ----------------------------------------------------------------------------------- | ----------- | ------------------ | --------- |
-| **BME280**      | Měří teplotu, vlhkost a atmosférický tlak. Je nezbytný pro provoz stanice.          | Ne          | 21 (SDA), 22 (SCL) | Povinný   |
-| **BH1750**      | Měří intenzitu osvětlení v luxech (lx), která je ve firmwaru přepočítávána na W/m². | Ano         | 21 (SDA), 22 (SCL) | Volitelný |
-| **MS-WH-SP-RG** | Překlápěcí srážkoměr pro měření úhrnu srážek.                                       | Ano         | 27                 | Volitelný |
+| Senzor          | Popis                                                                               | GPIO (ESP32)       | GPIO (ESP32-C3)    | Poznámka  |
+| --------------- | ----------------------------------------------------------------------------------- | ------------------ | ------------------ | --------- |
+| **BME280**      | Měří teplotu, vlhkost a atmosférický tlak. Je nezbytný pro provoz stanice.          | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Povinný   |
+| **BH1750**      | Měří intenzitu osvětlení v luxech (lx), která je ve firmwaru přepočítávána na W/m². | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Volitelný |
+| **MS-WH-SP-RG** | Překlápěcí srážkoměr pro měření úhrnu srážek.                                       | 27                 | Není podporován    | Volitelný |
 
 **MS-WH-SP-RG**
 
@@ -29,6 +29,6 @@ Poznámky k implementaci:
 
 ## Ostatní
 
-| Název         | Popis                                                 | Lze vypnout | GPIO | Poznámka  |
-| ------------- | ----------------------------------------------------- | ----------- | ---- | --------- |
-| **LED dioda** | Slouží pro funkci Heartbeat (indikaci stavu stanice). | Ano         | 2    | Volitelná |
+| Název         | Popis                                                 | GPIO (ESP32, ESP32-C3)   | Poznámka  |
+| ------------- | ----------------------------------------------------- | ------------------------ | --------- |
+| **LED dioda** | Slouží pro funkci Heartbeat (indikaci stavu stanice). | 2                        | Volitelná |
