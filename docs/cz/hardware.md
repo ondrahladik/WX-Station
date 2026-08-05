@@ -8,11 +8,11 @@ Tento projekt je primárně vytvářen a vyvíjen pro standardní **ESP32**. Tyt
 
 ## Senzory
 
-| Senzor          | Popis                                                                               | GPIO (ESP32)       | GPIO (ESP32-C3)    | Poznámka  |
-| --------------- | ----------------------------------------------------------------------------------- | ------------------ | ------------------ | --------- |
-| **BME280**      | Měří teplotu, vlhkost a atmosférický tlak. Je nezbytný pro provoz stanice.          | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Povinný   |
-| **BH1750**      | Měří intenzitu osvětlení v luxech (lx), která je ve firmwaru přepočítávána na W/m². | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Volitelný |
-| **MS-WH-SP-RG** | Překlápěcí srážkoměr pro měření úhrnu srážek.                                       | 27                 | Není podporován    | Volitelný |
+| Senzor          | Popis                                         | ESP32              | ESP32-C3           | Poznámka  |
+| --------------- | --------------------------------------------- | ------------------ | ------------------ | --------- |
+| **BME280**      | Měří teplotu, vlhkost a atmosférický tlak.    | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Povinný   |
+| **BH1750**      | Měří intenzitu osvětlení.                     | 21 (SDA), 22 (SCL) | 21 (SDA), 22 (SCL) | Volitelný |
+| **MS-WH-SP-RG** | Překlápěcí srážkoměr pro měření úhrnu srážek. | 27                 | Není podporován    | Volitelný |
 
 **MS-WH-SP-RG**
 
@@ -29,6 +29,6 @@ Poznámky k implementaci:
 
 ## Ostatní
 
-| Název         | Popis                                                 | GPIO (ESP32, ESP32-C3)   | Poznámka  |
-| ------------- | ----------------------------------------------------- | ------------------------ | --------- |
-| **LED dioda** | Slouží pro funkci Heartbeat (indikaci stavu stanice). | 2                        | Volitelná |
+| Název         | Popis                                                 | ESP32, ESP32-C3  | Poznámka  |
+| ------------- | ----------------------------------------------------- | ---------------- | --------- |
+| **LED dioda** | Slouží pro funkci Heartbeat (indikaci stavu stanice). | 2                | Volitelná |
