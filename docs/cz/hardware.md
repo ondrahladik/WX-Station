@@ -27,7 +27,7 @@ Poznámky k implementaci:
 - Firmware filtruje chybné pulzy pomocí minimální a maximální délky sepnutí a krátkého ochranného intervalu mezi dvěma platnými pulzy.
 - Výchozí kalibrace je `0.2794 mm/tip`, ale lze ji změnit ve webové konfiguraci.
 
-Pro funkčnost srážkoměru na ESP32-C3 je nutné kódu změnit GPIO pin, protože ESP32-C3 má jinou konfiguraci pinů než ESP32. V současné době je podporován pouze ESP32 s GPIO 27.
+Pro funkčnost srážkoměru na ESP32-C3 je nutné v kódu změnit GPIO pin, protože ESP32-C3 má jinou konfiguraci pinů než ESP32. V současné době je podporován pouze ESP32 s GPIO 27.
 
 ## Ostatní
 
