@@ -518,10 +518,10 @@ String buildSettingsScript() {
 
 String buildStatusJson() {
   DynamicJsonDocument doc(1024);
-  doc["temperature"] = formatFloatValue(temperature, 1, " °C");
-  doc["humidity"] = formatFloatValue(humidity, 1, " %");
-  doc["pressureAbs"] = formatFloatValue(pressure, 1, " hPa");
-  doc["pressureRel"] = formatFloatValue(seaLevelPressure, 1, " hPa");
+  doc["temperature"] = formatFloatValue(temperature, 2, " °C");
+  doc["humidity"] = formatFloatValue(humidity, 2, " %");
+  doc["pressureAbs"] = formatFloatValue(pressure, 2, " hPa");
+  doc["pressureRel"] = formatFloatValue(seaLevelPressure, 2, " hPa");
   doc["light"] = config.activeLight ? formatFloatValue(lightWm2, 2, " W/m²") : String("Disabled");
   doc["rain1h"] = config.activeRain ? formatFloatValue(RainGauge::getRainLastHourMm(), 2, " mm") : String("Disabled");
   doc["rain24h"] = config.activeRain ? formatFloatValue(RainGauge::getRainLast24HoursMm(), 2, " mm") : String("Disabled");
@@ -550,15 +550,15 @@ String buildDashboardPage() {
   html += "<div class='row card-grid mb-4'>";
   html +=
     "<div class='col-6 col-md-4'><div class='info-card'><div class='metric-label'>Temperature</div><div id='card-temperature' class='metric-value'>"
-    + formatFloatValue(temperature, 1, " °C")
+    + formatFloatValue(temperature, 2, " °C")
     + "</div></div></div>";
   html +=
     "<div class='col-6 col-md-4'><div class='info-card'><div class='metric-label'>Humidity</div><div id='card-humidity' class='metric-value'>"
-    + formatFloatValue(humidity, 1, " %")
+    + formatFloatValue(humidity, 2, " %")
     + "</div></div></div>";
   html +=
     "<div class='col-12 col-md-4'><div class='info-card'><div class='metric-label'>Pressure</div><div id='card-pressure' class='metric-value'>"
-    + formatFloatValue(seaLevelPressure, 1, " hPa")
+    + formatFloatValue(seaLevelPressure, 2, " hPa")
     + "</div></div></div>";
   html += "</div>";
 
@@ -568,10 +568,10 @@ String buildDashboardPage() {
       "<div class='panel'>"
         "<h5 class='mb-3'><i class='bi bi-thermometer-half'></i> Sensors</h5>"
         "<table class='list-table'>"
-          "<tr><td>Temperature</td><td id='sensor-temperature'>" + formatFloatValue(temperature, 1, " °C") + "</td></tr>"
-          "<tr><td>Humidity</td><td id='sensor-humidity'>" + formatFloatValue(humidity, 1, " %") + "</td></tr>"
-          "<tr><td>Pressure (abs)</td><td id='sensor-pressure-abs'>" + formatFloatValue(pressure, 1, " hPa") + "</td></tr>"
-          "<tr><td>Pressure (rel)</td><td id='sensor-pressure-rel'>" + formatFloatValue(seaLevelPressure, 1, " hPa") + "</td></tr>"
+          "<tr><td>Temperature</td><td id='sensor-temperature'>" + formatFloatValue(temperature, 2, " °C") + "</td></tr>"
+          "<tr><td>Humidity</td><td id='sensor-humidity'>" + formatFloatValue(humidity, 2, " %") + "</td></tr>"
+          "<tr><td>Pressure (abs)</td><td id='sensor-pressure-abs'>" + formatFloatValue(pressure, 2, " hPa") + "</td></tr>"
+          "<tr><td>Pressure (rel)</td><td id='sensor-pressure-rel'>" + formatFloatValue(seaLevelPressure, 2, " hPa") + "</td></tr>"
           "<tr><td>Light</td><td id='sensor-light'>" + (config.activeLight ? formatFloatValue(lightWm2, 2, " W/m²") : String("Disabled")) + "</td></tr>"
           "<tr><td>Rain 1h</td><td id='sensor-rain-1h'>" + (config.activeRain ? formatFloatValue(RainGauge::getRainLastHourMm(), 2, " mm") : String("Disabled")) + "</td></tr>"
           "<tr><td>Rain 24h</td><td id='sensor-rain-24h'>" + (config.activeRain ? formatFloatValue(RainGauge::getRainLast24HoursMm(), 2, " mm") : String("Disabled")) + "</td></tr>"
