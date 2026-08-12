@@ -82,6 +82,23 @@ Odesílání všech dat na MQTT server ve formátu JSON. Ideální pro zpracová
 * **Pub topic 2:** Topic, do kterého bude odeslána hodnota konfigurace vyžádaná pomocí MQTT příkazu `get()`.
 * **Sub topic:** Topic, na kterém stanice přijímá textové příkazy. Lze nastavit dva topicy – jeden například pro ovládání konkrétní stanice a druhý pro hromadné ovládání více stanic.
 
+### TRIGGER
+
+Trigger umožňuje podle naměřených hodnot automaticky spínat až **3 GPIO výstupy**.
+
+* **Trigger 1–3:** Každý trigger má vlastní zapnutí/vypnutí.
+* **Trigger X (hodnota / GPIO):** Pro každý trigger vyberete sledovanou veličinu a výstupní pin.
+* **Trigger X ON / OFF:** Prahy pro sepnutí a rozepnutí výstupu.
+
+Dostupné veličiny:
+* **Temperature, Humidity, Pressure, RSSI:** vždy dostupné.
+* **Light:** dostupné jen při aktivním Light senzoru.
+* **Rain 1h, Rain 24h:** dostupné jen při aktivním Rain senzoru.
+
+Poznámky:
+* Lze použít jen volné GPIO piny (obsazené piny jsou ve výběru označené jako `used`).
+* Jeden GPIO pin nelze současně použít pro více triggerů.
+
 ### SYSLOG
 
 Veškerá činnost stanice je zaznamenávána na Syslog server. Funguje podobně jako debug režim, ale není nutné mít stanici připojenou k počítači.

@@ -82,6 +82,23 @@ Sends all measurement data to an MQTT server in JSON format. This is ideal for r
 * **Pub Topic 2:** Topic where the response to the MQTT `get()` command is published.
 * **Sub Topic:** Topic on which the station listens for plain-text commands. Two topics can be configured—for example, one dedicated to a single station and another for controlling multiple stations simultaneously.
 
+### TRIGGER
+
+Trigger can automatically switch up to **3 GPIO outputs** based on measured values.
+
+* **Trigger 1–3:** Each trigger has its own enable/disable switch.
+* **Trigger X (metric / GPIO):** For each trigger, select the measured metric and output pin.
+* **Trigger X ON / OFF:** Threshold values for turning the output on and off.
+
+Available metrics:
+* **Temperature, Humidity, Pressure, RSSI:** always available.
+* **Light:** available only when the Light sensor is enabled.
+* **Rain 1h, Rain 24h:** available only when the Rain sensor is enabled.
+
+Notes:
+* Only free GPIO pins can be used (occupied pins are marked as `used` in the selector).
+* The same GPIO pin cannot be assigned to multiple triggers.
+
 ### SYSLOG
 
 All station activity is logged to a Syslog server. It provides functionality similar to Debug mode but does not require the station to be physically connected to a computer.
