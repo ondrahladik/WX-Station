@@ -1,5 +1,6 @@
 # CHANGELOG
 
+- **12. 08. 2026:** v1.0.7 - Added Trigger feature (GPIO output control based on measured values).
 - **18. 07. 2026:** v1.0.6 - Added mDNS (wx.local). Redesigned the web configuration and added dashboard and debug pages.
 - **15. 07. 2026:** v1.0.5 - Added basic rain gauge support and NTP server connectivity.  
 - **03. 07. 2026:** v1.0.4 - Added heartbeat effect, with an option for LED flashing.  
