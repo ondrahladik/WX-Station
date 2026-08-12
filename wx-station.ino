@@ -18,7 +18,7 @@
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.6";
+const char* programVers = "v1.0.7";
 const char* localHostname = "wx";
 
 WiFiUDP udp;
@@ -54,6 +54,15 @@ const unsigned long ntpResyncIntervalMs = 6UL * 60UL * 60UL * 1000UL;
 const uint8_t bmeI2cAddress = 0x76;
 const uint8_t bh1750PrimaryAddress = 0x23;
 const uint8_t bh1750SecondaryAddress = 0x5C;
+
+#if defined(CONFIG_IDF_TARGET_ESP32C3)
+const uint8_t i2cSdaPin = 8;
+const uint8_t i2cSclPin = 9;
+#else
+const uint8_t i2cSdaPin = 21;
+const uint8_t i2cSclPin = 22;
+#endif
+
 float temperature, humidity, pressure, seaLevelPressure;
 float lightLux, lightWm2;
 int rssi;
@@ -65,6 +74,12 @@ unsigned long lastNtpSyncAttempt = 0;
 bool clockSynchronized = false;
 String debugLogBuffer;
 const size_t maxDebugLogBufferLength = 12000;
+int8_t activeGPIOTriggerPins[GPIO_TRIGGER_COUNT] = {
+  GPIO_TRIGGER_PIN_DISABLED,
+  GPIO_TRIGGER_PIN_DISABLED,
+  GPIO_TRIGGER_PIN_DISABLED
+};
+bool gpioTriggerStates[GPIO_TRIGGER_COUNT] = {false, false, false};
 
 const char* ntpServerPrimary = "pool.ntp.org";
 const char* ntpServerSecondary = "time.google.com";
@@ -82,6 +97,8 @@ bool isBH1750Responsive();
 void tryRecoverSensors();
 bool synchronizeClock(bool waitForSync = true);
 void startMDNSService();
+void applyGPIOTriggerConfiguration();
+void updateGPIOTriggers();
 
 void refreshHeartbeatState() {
   if (fatalErrorActive || runtimeSensorFaultActive) {
@@ -159,6 +176,208 @@ String getDebugLogBuffer() {
 
 void clearDebugLogBuffer() {
   debugLogBuffer = "";
+}
+
+bool isGPIOTriggerMetricAvailable(uint8_t metric) {
+  switch (metric) {
+    case GPIO_TRIGGER_METRIC_TEMPERATURE:
+    case GPIO_TRIGGER_METRIC_HUMIDITY:
+    case GPIO_TRIGGER_METRIC_PRESSURE:
+    case GPIO_TRIGGER_METRIC_RSSI:
+      return true;
+    case GPIO_TRIGGER_METRIC_LIGHT:
+      return config.activeLight;
+    case GPIO_TRIGGER_METRIC_RAIN_1H:
+    case GPIO_TRIGGER_METRIC_RAIN_24H:
+      return config.activeRain;
+    default:
+      return false;
+  }
+}
+
+const char* gpioTriggerMetricLabel(uint8_t metric) {
+  switch (metric) {
+    case GPIO_TRIGGER_METRIC_TEMPERATURE:
+      return "Temperature";
+    case GPIO_TRIGGER_METRIC_HUMIDITY:
+      return "Humidity";
+    case GPIO_TRIGGER_METRIC_PRESSURE:
+      return "Pressure";
+    case GPIO_TRIGGER_METRIC_LIGHT:
+      return "Light";
+    case GPIO_TRIGGER_METRIC_RAIN_1H:
+      return "Rain 1h";
+    case GPIO_TRIGGER_METRIC_RAIN_24H:
+      return "Rain 24h";
+    case GPIO_TRIGGER_METRIC_RSSI:
+      return "RSSI";
+    default:
+      return "Unknown";
+  }
+}
+
+const char* gpioTriggerMetricUnit(uint8_t metric) {
+  switch (metric) {
+    case GPIO_TRIGGER_METRIC_TEMPERATURE:
+      return "°C";
+    case GPIO_TRIGGER_METRIC_HUMIDITY:
+      return "%";
+    case GPIO_TRIGGER_METRIC_PRESSURE:
+      return "hPa";
+    case GPIO_TRIGGER_METRIC_LIGHT:
+      return "W/m2";
+    case GPIO_TRIGGER_METRIC_RAIN_1H:
+    case GPIO_TRIGGER_METRIC_RAIN_24H:
+      return "mm";
+    case GPIO_TRIGGER_METRIC_RSSI:
+      return "dBm";
+    default:
+      return "";
+  }
+}
+
+bool isReservedGPIOPin(int pin) {
+  return pin == Heartbeat::HEARTBEAT_LED_PIN ||
+         pin == RainGauge::getPin() ||
+         pin == i2cSdaPin ||
+         pin == i2cSclPin;
+}
+
+bool isGPIOTriggerSelectablePin(int pin) {
+  return pin >= 0 && pin <= 40 && !isReservedGPIOPin(pin);
+}
+
+bool readGPIOTriggerMetricValue(uint8_t metric, float& value) {
+  switch (metric) {
+    case GPIO_TRIGGER_METRIC_TEMPERATURE:
+      value = temperature;
+      return !isnan(value);
+    case GPIO_TRIGGER_METRIC_HUMIDITY:
+      value = humidity;
+      return !isnan(value);
+    case GPIO_TRIGGER_METRIC_PRESSURE:
+      value = seaLevelPressure;
+      return !isnan(value);
+    case GPIO_TRIGGER_METRIC_LIGHT:
+      if (!config.activeLight) {
+        return false;
+      }
+      value = lightWm2;
+      return !isnan(value);
+    case GPIO_TRIGGER_METRIC_RAIN_1H:
+      if (!config.activeRain) {
+        return false;
+      }
+      value = RainGauge::getRainLastHourMm();
+      return !isnan(value);
+    case GPIO_TRIGGER_METRIC_RAIN_24H:
+      if (!config.activeRain) {
+        return false;
+      }
+      value = RainGauge::getRainLast24HoursMm();
+      return !isnan(value);
+    case GPIO_TRIGGER_METRIC_RSSI:
+      value = static_cast<float>(rssi);
+      return true;
+    default:
+      return false;
+  }
+}
+
+void releaseGPIOTriggerPin(uint8_t index) {
+  int8_t pin = activeGPIOTriggerPins[index];
+  if (pin != GPIO_TRIGGER_PIN_DISABLED) {
+    digitalWrite(pin, LOW);
+    pinMode(pin, INPUT);
+  }
+
+  activeGPIOTriggerPins[index] = GPIO_TRIGGER_PIN_DISABLED;
+  gpioTriggerStates[index] = false;
+}
+
+void applyGPIOTriggerOutput(uint8_t index, bool enabled) {
+  int8_t pin = activeGPIOTriggerPins[index];
+  if (pin == GPIO_TRIGGER_PIN_DISABLED) {
+    return;
+  }
+
+  gpioTriggerStates[index] = enabled;
+  digitalWrite(pin, enabled ? HIGH : LOW);
+
+  String message = "TRG" + String(index + 1)
+    + " | GPIO " + String(pin)
+    + " | " + String(enabled ? "ON" : "OFF")
+    + " | " + gpioTriggerMetricLabel(config.gpioTriggers[index].value)
+    + ": " + String(enabled ? config.gpioTriggers[index].triggerOnValue : config.gpioTriggers[index].triggerOffValue, 2)
+    + " " + gpioTriggerMetricUnit(config.gpioTriggers[index].value);
+  debugPrint(message, true);
+  logToSyslog(message.c_str());
+}
+
+void applyGPIOTriggerConfiguration() {
+  bool claimedPins[41] = {false};
+
+  for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT; i++) {
+    GPIOTriggerConfig& trigger = config.gpioTriggers[i];
+    bool validConfiguration =
+      trigger.enabled &&
+      trigger.value < GPIO_TRIGGER_METRIC_COUNT &&
+      isGPIOTriggerMetricAvailable(trigger.value) &&
+      isGPIOTriggerSelectablePin(trigger.gpioPin) &&
+      !claimedPins[trigger.gpioPin];
+
+    if (!validConfiguration) {
+      releaseGPIOTriggerPin(i);
+      continue;
+    }
+
+    claimedPins[trigger.gpioPin] = true;
+
+    if (activeGPIOTriggerPins[i] != trigger.gpioPin) {
+      releaseGPIOTriggerPin(i);
+      activeGPIOTriggerPins[i] = trigger.gpioPin;
+      pinMode(activeGPIOTriggerPins[i], OUTPUT);
+      digitalWrite(activeGPIOTriggerPins[i], LOW);
+      gpioTriggerStates[i] = false;
+    } else {
+      pinMode(activeGPIOTriggerPins[i], OUTPUT);
+      digitalWrite(activeGPIOTriggerPins[i], gpioTriggerStates[i] ? HIGH : LOW);
+    }
+  }
+}
+
+void updateGPIOTriggers() {
+  for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT; i++) {
+    int8_t pin = activeGPIOTriggerPins[i];
+    if (pin == GPIO_TRIGGER_PIN_DISABLED) {
+      continue;
+    }
+
+    GPIOTriggerConfig& trigger = config.gpioTriggers[i];
+    float currentValue = 0.0f;
+    if (!readGPIOTriggerMetricValue(trigger.value, currentValue)) {
+      continue;
+    }
+
+    bool nextState = gpioTriggerStates[i];
+    if (trigger.triggerOnValue >= trigger.triggerOffValue) {
+      if (!nextState && currentValue >= trigger.triggerOnValue) {
+        nextState = true;
+      } else if (nextState && currentValue <= trigger.triggerOffValue) {
+        nextState = false;
+      }
+    } else {
+      if (!nextState && currentValue <= trigger.triggerOnValue) {
+        nextState = true;
+      } else if (nextState && currentValue >= trigger.triggerOffValue) {
+        nextState = false;
+      }
+    }
+
+    if (nextState != gpioTriggerStates[i]) {
+      applyGPIOTriggerOutput(i, nextState);
+    }
+  }
 }
 
 // ====== Functions ======
@@ -885,7 +1104,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
       return;
     }
 
-    StaticJsonDocument<2048> doc;
+    StaticJsonDocument<4096> doc;
     DeserializationError error = deserializeJson(doc, file);
     file.close();
 
@@ -932,7 +1151,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
     String jsonStr = message.substring(startIdx, endIdx);
     jsonStr.trim();
     
-    StaticJsonDocument<2048> doc;
+    StaticJsonDocument<4096> doc;
     DeserializationError error = deserializeJson(doc, jsonStr);
     
     if (error) {
@@ -949,6 +1168,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
       loadConfig();
       Heartbeat::setEnabled(config.activeHeartbeat);
       RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
+      applyGPIOTriggerConfiguration();
       
       mqttClient.publish(config.mqttTopicPub2.c_str(), "set(config) OK");
       debugPrint("MQTT | RECV OK | set(config) -> Full config replaced", true);
@@ -975,7 +1195,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
     value.trim();
     
     File file = LittleFS.open("/config.json", "r");
-    StaticJsonDocument<2048> doc;
+    StaticJsonDocument<4096> doc;
     
     if (file) {
       deserializeJson(doc, file);
@@ -1023,6 +1243,7 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
       loadConfig();
       Heartbeat::setEnabled(config.activeHeartbeat);
       RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
+      applyGPIOTriggerConfiguration();
       
       String response = "set(" + key + "=" + value + ") OK";
       mqttClient.publish(config.mqttTopicPub2.c_str(), response.c_str());
@@ -1075,7 +1296,7 @@ void setup() {
   loadConfig();
   Heartbeat::setEnabled(config.activeHeartbeat);
   Heartbeat::begin();
-  Wire.begin();
+  Wire.begin(i2cSdaPin, i2cSclPin);
 
   WiFi.setHostname("WX-Station");
   wm.setConnectRetries(3);
@@ -1093,6 +1314,7 @@ void setup() {
   startMDNSService();
   synchronizeClock(true);
   RainGauge::begin(config.activeRain, config.rainTipMm);
+  applyGPIOTriggerConfiguration();
 
   if (!initBME280()) {
       setRuntimeSensorFault("SENS | BME280 initialization failed.");
@@ -1140,6 +1362,10 @@ void setup() {
   sendInfoToDB();
   restartInterval();
   readSensorData();
+  if (config.activeLight) {
+    readLightSensor();
+  }
+  updateGPIOTriggers();
   publishToMQTT();
   sendDataToDB();
   sendDataToAPRS();
@@ -1152,6 +1378,7 @@ void setup() {
 void loop() {
   Heartbeat::update();
   RainGauge::update();
+  updateGPIOTriggers();
 
   if (fatalErrorActive) {
     return;

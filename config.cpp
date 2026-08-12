@@ -3,6 +3,20 @@
 Config config; 
 const char* configFile = "/config.json";
 
+namespace {
+
+void setDefaultGPIOTriggers() {
+  for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT; i++) {
+    config.gpioTriggers[i].enabled = false;
+    config.gpioTriggers[i].triggerOnValue = 0.0f;
+    config.gpioTriggers[i].triggerOffValue = 0.0f;
+    config.gpioTriggers[i].value = GPIO_TRIGGER_METRIC_TEMPERATURE;
+    config.gpioTriggers[i].gpioPin = GPIO_TRIGGER_PIN_DISABLED;
+  }
+}
+
+}  // namespace
+
 bool loadConfig() {
   if (!LittleFS.begin(true)) {
     Serial.println("SYST | LittleFS mount failed!");
@@ -74,6 +88,9 @@ bool loadConfig() {
     config.mqttTopicSub1  = "";
     config.mqttTopicSub2  = "";
 
+    // GPIO trigger defaults
+    setDefaultGPIOTriggers();
+
     // SYSLOG config defaults
     config.syslogServer  = "example.com";
     config.syslogPort    = 514;
@@ -94,7 +111,7 @@ bool loadConfig() {
     return false;
   }
 
-  StaticJsonDocument<2048> doc;
+  StaticJsonDocument<4096> doc;
   DeserializationError error = deserializeJson(doc, file);
   file.close();
 
@@ -165,6 +182,33 @@ bool loadConfig() {
   config.mqttTopicSub1  = doc["mqttTopicSub1"] | "";
   config.mqttTopicSub2  = doc["mqttTopicSub2"] | "";
 
+  setDefaultGPIOTriggers();
+  for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT; i++) {
+    String enabledKey = "triggerEnabled" + String(i);
+    String onKey = "triggerOnValue" + String(i);
+    String offKey = "triggerOffValue" + String(i);
+    String valueKey = "triggerValue" + String(i);
+    String pinKey = "triggerGpioPin" + String(i);
+
+    config.gpioTriggers[i].enabled = doc[enabledKey] | config.gpioTriggers[i].enabled;
+    config.gpioTriggers[i].triggerOnValue = doc[onKey] | config.gpioTriggers[i].triggerOnValue;
+    config.gpioTriggers[i].triggerOffValue = doc[offKey] | config.gpioTriggers[i].triggerOffValue;
+    config.gpioTriggers[i].value = doc[valueKey] | config.gpioTriggers[i].value;
+    config.gpioTriggers[i].gpioPin = doc[pinKey] | config.gpioTriggers[i].gpioPin;
+  }
+
+  JsonArray gpioTriggers = doc["gpioTriggers"].as<JsonArray>();
+  if (!gpioTriggers.isNull()) {
+    for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT && i < gpioTriggers.size(); i++) {
+      JsonObject trigger = gpioTriggers[i];
+      config.gpioTriggers[i].enabled = trigger["enabled"] | false;
+      config.gpioTriggers[i].triggerOnValue = trigger["triggerOnValue"] | 0.0f;
+      config.gpioTriggers[i].triggerOffValue = trigger["triggerOffValue"] | 0.0f;
+      config.gpioTriggers[i].value = trigger["value"] | trigger["metric"] | GPIO_TRIGGER_METRIC_TEMPERATURE;
+      config.gpioTriggers[i].gpioPin = trigger["gpioPin"] | GPIO_TRIGGER_PIN_DISABLED;
+    }
+  }
+
   // SYSLOG config
   config.syslogServer = doc["syslogServer"] | "example.com";
   config.syslogPort   = doc["syslogPort"]   | 514;
@@ -179,7 +223,7 @@ bool loadConfig() {
 }
 
 bool saveConfig() {
-  StaticJsonDocument<2048> doc; 
+  StaticJsonDocument<4096> doc; 
   doc["debugMode"]        = config.debugMode;
   doc["activeHeartbeat"]  = config.activeHeartbeat;
   doc["activeAPRS"]       = config.activeAPRS;
@@ -239,6 +283,14 @@ bool saveConfig() {
   doc["mqttTopicPub2"]  = config.mqttTopicPub2;
   doc["mqttTopicSub1"]  = config.mqttTopicSub1;
   doc["mqttTopicSub2"]  = config.mqttTopicSub2;
+
+  for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT; i++) {
+    doc["triggerEnabled" + String(i)] = config.gpioTriggers[i].enabled;
+    doc["triggerOnValue" + String(i)] = config.gpioTriggers[i].triggerOnValue;
+    doc["triggerOffValue" + String(i)] = config.gpioTriggers[i].triggerOffValue;
+    doc["triggerValue" + String(i)] = config.gpioTriggers[i].value;
+    doc["triggerGpioPin" + String(i)] = config.gpioTriggers[i].gpioPin;
+  }
 
   // SYSLOG config
   doc["syslogServer"] = config.syslogServer;

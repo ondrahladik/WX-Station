@@ -3,6 +3,28 @@
 #include <FS.h>
 #include <LittleFS.h>
 
+constexpr uint8_t GPIO_TRIGGER_COUNT = 3;
+constexpr int8_t GPIO_TRIGGER_PIN_DISABLED = -1;
+
+enum GPIOTriggerMetric : uint8_t {
+  GPIO_TRIGGER_METRIC_TEMPERATURE = 0,
+  GPIO_TRIGGER_METRIC_HUMIDITY = 1,
+  GPIO_TRIGGER_METRIC_PRESSURE = 2,
+  GPIO_TRIGGER_METRIC_LIGHT = 3,
+  GPIO_TRIGGER_METRIC_RAIN_1H = 4,
+  GPIO_TRIGGER_METRIC_RAIN_24H = 5,
+  GPIO_TRIGGER_METRIC_RSSI = 6,
+  GPIO_TRIGGER_METRIC_COUNT
+};
+
+struct GPIOTriggerConfig {
+  bool enabled;
+  float triggerOnValue;
+  float triggerOffValue;
+  uint8_t value;
+  int8_t gpioPin;
+};
+
 // ===== Config structure =====
 struct Config {
   // Active config
@@ -67,6 +89,9 @@ struct Config {
   String mqttTopicPub2;
   String mqttTopicSub1;
   String mqttTopicSub2;
+
+  // GPIO trigger config
+  GPIOTriggerConfig gpioTriggers[GPIO_TRIGGER_COUNT];
 
   // Syslog config
   String syslogServer;

@@ -20,6 +20,7 @@ extern float seaLevelPressure;
 extern float lightLux;
 extern float lightWm2;
 extern int rssi;
+extern void applyGPIOTriggerConfiguration();
 
 // WebServer instance on port 80
 WebServer server(80);
@@ -27,6 +28,14 @@ WebServer server(80);
 File uploadFile;
 
 namespace {
+
+#if defined(CONFIG_IDF_TARGET_ESP32C3)
+constexpr uint8_t kI2cSdaPin = 8;
+constexpr uint8_t kI2cSclPin = 9;
+#else
+constexpr uint8_t kI2cSdaPin = 21;
+constexpr uint8_t kI2cSclPin = 22;
+#endif
 
 String htmlEscape(const String& value) {
   String escaped = value;
@@ -51,6 +60,123 @@ String formatIntValue(int value, const char* suffix = "") {
 
 String formatBoolBadge(bool enabled, const char* onLabel = "Active", const char* offLabel = "Off") {
   return String("<span class='status-pill ") + (enabled ? "ok'>" : "muted'>") + (enabled ? onLabel : offLabel) + "</span>";
+}
+
+bool isGPIOTriggerMetricAvailable(uint8_t metric) {
+  switch (metric) {
+    case GPIO_TRIGGER_METRIC_TEMPERATURE:
+    case GPIO_TRIGGER_METRIC_HUMIDITY:
+    case GPIO_TRIGGER_METRIC_PRESSURE:
+    case GPIO_TRIGGER_METRIC_RSSI:
+      return true;
+    case GPIO_TRIGGER_METRIC_LIGHT:
+      return config.activeLight;
+    case GPIO_TRIGGER_METRIC_RAIN_1H:
+    case GPIO_TRIGGER_METRIC_RAIN_24H:
+      return config.activeRain;
+    default:
+      return false;
+  }
+}
+
+String gpioTriggerMetricLabel(uint8_t metric) {
+  switch (metric) {
+    case GPIO_TRIGGER_METRIC_TEMPERATURE:
+      return "Temperature";
+    case GPIO_TRIGGER_METRIC_HUMIDITY:
+      return "Humidity";
+    case GPIO_TRIGGER_METRIC_PRESSURE:
+      return "Pressure";
+    case GPIO_TRIGGER_METRIC_LIGHT:
+      return "Light";
+    case GPIO_TRIGGER_METRIC_RAIN_1H:
+      return "Rain 1h";
+    case GPIO_TRIGGER_METRIC_RAIN_24H:
+      return "Rain 24h";
+    case GPIO_TRIGGER_METRIC_RSSI:
+      return "RSSI";
+    default:
+      return "Unknown";
+  }
+}
+
+String gpioTriggerMetricUnit(uint8_t metric) {
+  switch (metric) {
+    case GPIO_TRIGGER_METRIC_TEMPERATURE:
+      return "°C";
+    case GPIO_TRIGGER_METRIC_HUMIDITY:
+      return "%";
+    case GPIO_TRIGGER_METRIC_PRESSURE:
+      return "hPa";
+    case GPIO_TRIGGER_METRIC_LIGHT:
+      return "W/m²";
+    case GPIO_TRIGGER_METRIC_RAIN_1H:
+    case GPIO_TRIGGER_METRIC_RAIN_24H:
+      return "mm";
+    case GPIO_TRIGGER_METRIC_RSSI:
+      return "dBm";
+    default:
+      return "";
+  }
+}
+
+bool isBaseReservedGPIOPin(int pin) {
+  return pin == Heartbeat::HEARTBEAT_LED_PIN ||
+         pin == RainGauge::getPin() ||
+         pin == kI2cSdaPin ||
+         pin == kI2cSclPin;
+}
+
+String buildGPIOTriggerMetricOptions(uint8_t selectedMetric) {
+  String html;
+
+  for (uint8_t metric = 0; metric < GPIO_TRIGGER_METRIC_COUNT; metric++) {
+    bool available = isGPIOTriggerMetricAvailable(metric);
+    bool selected = selectedMetric == metric;
+    String metricRequirement = "always";
+    if (metric == GPIO_TRIGGER_METRIC_LIGHT) {
+      metricRequirement = "light";
+    } else if (metric == GPIO_TRIGGER_METRIC_RAIN_1H || metric == GPIO_TRIGGER_METRIC_RAIN_24H) {
+      metricRequirement = "rain";
+    }
+
+    html += "<option value='" + String(metric) + "' data-metric-requirement='" + metricRequirement + "' data-unit='" + gpioTriggerMetricUnit(metric) + "'";
+    if (selected) {
+      html += " selected";
+    }
+    if (!available) {
+      html += " disabled";
+    }
+    html += ">";
+    html += gpioTriggerMetricLabel(metric);
+    if (!available) {
+      html += " (disabled)";
+    }
+    html += "</option>";
+  }
+
+  return html;
+}
+
+String buildGPIOTriggerPinOptions(int selectedPin) {
+  String html = "<option value='-1'" + String(selectedPin < 0 ? " selected" : "") + ">Select GPIO</option>";
+
+  for (int pin = 0; pin <= 40; pin++) {
+    bool reserved = isBaseReservedGPIOPin(pin);
+    bool selected = selectedPin == pin;
+    html += "<option value='" + String(pin) + "' data-reserved='" + String(reserved ? 1 : 0) + "'";
+    if (selected) {
+      html += " selected";
+    }
+    html += ">";
+    html += "GPIO " + String(pin);
+    if (reserved) {
+      html += " (used)";
+    }
+    html += "</option>";
+  }
+
+  return html;
 }
 
 String logEscape(const String& value) {
@@ -335,6 +461,58 @@ String buildDebugRefreshScript() {
         "}catch(e){}"
       "}"
       "document.addEventListener('DOMContentLoaded',function(){const log=document.getElementById('debug-log');if(log){log.scrollTop=log.scrollHeight;}setInterval(refreshDebugLog,2000);});"
+    + "</script>";
+}
+
+String buildSettingsScript() {
+  return String()
+    + "<script>"
+      "function toggleSection(toggleId,sectionId){const toggle=document.getElementById(toggleId);const section=document.getElementById(sectionId);if(toggle&&section){section.style.display=toggle.checked?'block':'none';}}"
+      "function refreshGpioTriggerUnits(){"
+        "document.querySelectorAll('select[name^=\"gpioTriggerMetric\"]').forEach(select=>{"
+          "const index=select.name.replace('gpioTriggerMetric','');"
+          "const unitLabelOn=document.getElementById('gpioTriggerOnUnit'+index);"
+          "const unitLabelOff=document.getElementById('gpioTriggerOffUnit'+index);"
+          "const selectedOption=select.options[select.selectedIndex];"
+          "const unit=(selectedOption&&selectedOption.dataset.unit)?selectedOption.dataset.unit:'';"
+          "if(unitLabelOn){unitLabelOn.textContent=unit;}"
+          "if(unitLabelOff){unitLabelOff.textContent=unit;}"
+        "});"
+      "}"
+      "function refreshGpioTriggerMetricOptions(){"
+        "const lightToggle=document.getElementsByName('activeLight')[0];"
+        "const rainToggle=document.getElementById('activeRain');"
+        "const lightEnabled=!!(lightToggle&&lightToggle.checked);"
+        "const rainEnabled=!!(rainToggle&&rainToggle.checked);"
+        "document.querySelectorAll('select[name^=\"gpioTriggerMetric\"]').forEach(select=>{"
+          "[...select.options].forEach(option=>{"
+            "const requirement=option.dataset.metricRequirement||'always';"
+            "const available=requirement==='always'||(requirement==='light'&&lightEnabled)||(requirement==='rain'&&rainEnabled);"
+            "option.disabled=!available;"
+            "option.textContent=option.textContent.replace(' (disabled)','');"
+            "if(!available){option.textContent+=' (disabled)';}"
+          "});"
+        "});"
+      "}"
+      "function refreshGpioTriggerPinOptions(){"
+        "const selects=[...document.querySelectorAll('.gpio-trigger-pin-select')];"
+        "const selectedPins=new Set();"
+        "selects.forEach(select=>{const index=select.dataset.index;const enabled=document.getElementById('gpioTriggerEnabled'+index);const value=parseInt(select.value,10);if(enabled&&enabled.checked&&!Number.isNaN(value)&&value>=0){selectedPins.add(value);}});"
+        "selects.forEach(select=>{const ownValue=parseInt(select.value,10);[...select.options].forEach(option=>{const pin=parseInt(option.value,10);if(Number.isNaN(pin)||pin<0){option.disabled=false;return;}const reserved=option.dataset.reserved==='1';const duplicated=selectedPins.has(pin)&&pin!==ownValue;option.disabled=reserved||duplicated;});});"
+      "}"
+      "document.addEventListener('DOMContentLoaded',function(){"
+        "toggleSection('activeAPRS','aprsFields');"
+        "toggleSection('activeMQTT','mqttFields');"
+        "toggleSection('activeSYSLOG','syslogFields');"
+        "for(let i=0;i<3;i++){toggleSection('gpioTriggerEnabled'+i,'gpioTriggerFields'+i);}refreshGpioTriggerMetricOptions();refreshGpioTriggerUnits();refreshGpioTriggerPinOptions();"
+        "document.querySelectorAll('.gpio-trigger-pin-select').forEach(select=>select.addEventListener('change',refreshGpioTriggerPinOptions));"
+        "document.querySelectorAll('select[name^=\"gpioTriggerMetric\"]').forEach(select=>select.addEventListener('change',function(){refreshGpioTriggerMetricOptions();refreshGpioTriggerUnits();}));"
+        "document.querySelectorAll('.gpio-trigger-toggle').forEach(toggle=>toggle.addEventListener('change',function(){const index=this.dataset.index;toggleSection('gpioTriggerEnabled'+index,'gpioTriggerFields'+index);refreshGpioTriggerPinOptions();}));"
+        "const lightToggle=document.getElementsByName('activeLight')[0];"
+        "const rainToggle=document.getElementById('activeRain');"
+        "if(lightToggle){lightToggle.addEventListener('change',function(){refreshGpioTriggerMetricOptions();refreshGpioTriggerUnits();});}"
+        "if(rainToggle){rainToggle.addEventListener('change',function(){refreshGpioTriggerMetricOptions();refreshGpioTriggerUnits();});}"
+      "});"
     + "</script>";
 }
 
@@ -637,6 +815,59 @@ String buildSettingsPage() {
 
   html +=
     "<section>"
+      "<h5><i class='bi bi-lightning-charge-fill'></i> TRIGGER</h5>"
+      "<div class='d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3'>"
+        "<div class='d-flex align-items-center'><p class='mb-0'>Trigger 1</p><div class='form-check form-switch ms-2 mb-0'><input class='form-check-input gpio-trigger-toggle' type='checkbox' id='gpioTriggerEnabled0' name='gpioTriggerEnabled0' data-index='0' "
+          + String(config.gpioTriggers[0].enabled ? "checked" : "")
+          + " onclick='document.getElementById(\"gpioTriggerFields0\").style.display=this.checked?\"block\":\"none\";'></div></div>"
+        "<div class='d-flex align-items-center'><p class='mb-0'>Trigger 2</p><div class='form-check form-switch ms-2 mb-0'><input class='form-check-input gpio-trigger-toggle' type='checkbox' id='gpioTriggerEnabled1' name='gpioTriggerEnabled1' data-index='1' "
+          + String(config.gpioTriggers[1].enabled ? "checked" : "")
+          + " onclick='document.getElementById(\"gpioTriggerFields1\").style.display=this.checked?\"block\":\"none\";'></div></div>"
+        "<div class='d-flex align-items-center'><p class='mb-0'>Trigger 3</p><div class='form-check form-switch ms-2 mb-0'><input class='form-check-input gpio-trigger-toggle' type='checkbox' id='gpioTriggerEnabled2' name='gpioTriggerEnabled2' data-index='2' "
+          + String(config.gpioTriggers[2].enabled ? "checked" : "")
+          + " onclick='document.getElementById(\"gpioTriggerFields2\").style.display=this.checked?\"block\":\"none\";'></div></div>"
+      "</div>";
+
+  for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT; i++) {
+    const GPIOTriggerConfig& trigger = config.gpioTriggers[i];
+
+    html +=
+      "<div id='gpioTriggerFields" + String(i) + "' style='display:" + String(trigger.enabled ? "block" : "none") + ";'>"
+        "<div class='row mb-3'>"
+          "<label class='col-12 col-md-4 col-form-label'>Trigger " + String(i + 1) + "</label>"
+          "<div class='col-12 col-md-4 mb-3 mb-md-0'>"
+            "<select class='form-select' name='gpioTriggerMetric" + String(i) + "'>"
+                + buildGPIOTriggerMetricOptions(trigger.value) +
+            "</select>"
+          "</div>"
+          "<div class='col-12 col-md-4'>"
+            "<select class='form-select gpio-trigger-pin-select' name='gpioTriggerPin" + String(i) + "' data-index='" + String(i) + "'>"
+              + buildGPIOTriggerPinOptions(trigger.gpioPin) +
+            "</select>"
+          "</div>"
+        "</div>"
+        "<div class='row mb-3'>"
+          "<label class='col-12 col-md-4 col-form-label'>Trigger " + String(i + 1) + " ON / OFF</label>"
+          "<div class='col-12 col-md-4 mb-3 mb-md-0'>"
+            "<div class='input-group'>"
+              "<input type='number' step='0.01' class='form-control' name='gpioTriggerOnValue" + String(i) + "' value='" + String(trigger.triggerOnValue, 2) + "' placeholder='0.00'>"
+              "<span class='input-group-text' id='gpioTriggerOnUnit" + String(i) + "'>" + gpioTriggerMetricUnit(trigger.value) + "</span>"
+            "</div>"
+          "</div>"
+          "<div class='col-12 col-md-4'>"
+            "<div class='input-group'>"
+              "<input type='number' step='0.01' class='form-control' name='gpioTriggerOffValue" + String(i) + "' value='" + String(trigger.triggerOffValue, 2) + "' placeholder='0.00'>"
+              "<span class='input-group-text' id='gpioTriggerOffUnit" + String(i) + "'>" + gpioTriggerMetricUnit(trigger.value) + "</span>"
+            "</div>"
+          "</div>"
+        "</div>"
+      "</div>";
+  }
+
+  html += "</section>";
+
+  html +=
+    "<section>"
       "<div class='d-flex align-items-center justify-content-between mb-3'>"
         "<h5><i class='bi bi-file-earmark-text-fill'></i> SYSLOG</h5>"
         "<div class='form-check form-switch mb-0'>"
@@ -713,6 +944,7 @@ String buildSettingsPage() {
     "</section>";
 
   html += "</form></div></main>";
+  html += buildSettingsScript();
   html += buildFooter();
   return html;
 }
@@ -762,6 +994,7 @@ void handleUpload() {
     loadConfig();
     Heartbeat::setEnabled(config.activeHeartbeat);
     RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
+    applyGPIOTriggerConfiguration();
   }
 }
 
@@ -844,6 +1077,14 @@ void handleSave() {
   if (server.hasArg("mqttTopicSub1")) config.mqttTopicSub1 = server.arg("mqttTopicSub1");
   if (server.hasArg("mqttTopicSub2")) config.mqttTopicSub2 = server.arg("mqttTopicSub2");
 
+  for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT; i++) {
+    config.gpioTriggers[i].enabled = server.hasArg("gpioTriggerEnabled" + String(i));
+    if (server.hasArg("gpioTriggerMetric" + String(i))) config.gpioTriggers[i].value = static_cast<uint8_t>(server.arg("gpioTriggerMetric" + String(i)).toInt());
+    if (server.hasArg("gpioTriggerPin" + String(i))) config.gpioTriggers[i].gpioPin = static_cast<int8_t>(server.arg("gpioTriggerPin" + String(i)).toInt());
+    if (server.hasArg("gpioTriggerOnValue" + String(i))) config.gpioTriggers[i].triggerOnValue = server.arg("gpioTriggerOnValue" + String(i)).toFloat();
+    if (server.hasArg("gpioTriggerOffValue" + String(i))) config.gpioTriggers[i].triggerOffValue = server.arg("gpioTriggerOffValue" + String(i)).toFloat();
+  }
+
   if (server.hasArg("syslogServer")) config.syslogServer = server.arg("syslogServer");
   if (server.hasArg("syslogPort")) config.syslogPort = server.arg("syslogPort").toInt();
 
@@ -857,6 +1098,7 @@ void handleSave() {
   saveConfig();
   Heartbeat::setEnabled(config.activeHeartbeat);
   RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
+  applyGPIOTriggerConfiguration();
 
   server.sendHeader("Location", "/setting?saved=1", true);
   server.send(303, "text/plain", "");
@@ -908,6 +1150,7 @@ void setupWeb() {
     loadConfig();
     Heartbeat::setEnabled(config.activeHeartbeat);
     RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
+    applyGPIOTriggerConfiguration();
     server.sendHeader("Location", "/setting?factory=1", true);
     server.send(303, "text/plain", "");
   });
