@@ -8,11 +8,12 @@ This project is primarily created and developed for the standard ESP32. Many suc
 
 ## Sensors
 
-| Sensor          | Description                          | ESP32              | ESP32-C3         | Note      |
-| --------------- | ------------------------------------ | ------------------ | ---------------- | --------- |
-| **BME280**      | Temperature, humidity, and pressure. | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Required  |
-| **BH1750**      | Luxmeter                             | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Optional  |
-| **MS-WH-SP-RG** | Rain gauge                           | 27                 | Not supported    | Optional  |
+| Sensor          | Description                          | ESP32              | ESP32-C3         | Note        |
+| --------------- | ------------------------------------ | ------------------ | ---------------- | ----------- |
+| **BME280**      | temperature, humidity, and pressure. | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Main sensor |
+| **BMP280+AHT20**| pressure + temperature and humidity  | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Alt sensor  |
+| **BH1750**      | luxmeter                             | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Optional    |
+| **MS-WH-SP-RG** | rain gauge                           | 27                 | Not supported    | Optional    |
 
 **MS-WH-SP-RG**
 

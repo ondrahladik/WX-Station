@@ -8,11 +8,12 @@ Tento projekt je primárně vytvářen a vyvíjen pro standardní **ESP32**. Tyt
 
 ## Senzory
 
-| Senzor          | Popis                                 | ESP32              | ESP32-C3         | Poznámka  |
-| --------------- | ------------------------------------- | ------------------ | ---------------- | --------- |
-| **BME280**      | Teplota, vlhkost a atmosférický tlak  | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Povinný   |
-| **BH1750**      | Luxmetr                               | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Volitelný |
-| **MS-WH-SP-RG** | Srážkoměr                             | 27                 | Není podporován  | Volitelný |
+| Senzor          | Popis                                 | ESP32              | ESP32-C3         | Poznámka      |
+| --------------- | ------------------------------------- | ------------------ | ---------------- | ------------- |
+| **BME280**      | teplota, vlhkost a atmosférický tlak  | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Hlavní senzor |
+| **BMP280+AHT20**| atmosférický tlak + teplota a vlhkost | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Alternativa   |
+| **BH1750**      | luxmetr                               | 21 (SDA), 22 (SCL) | 8 (SDA), 9 (SCL) | Volitelný     |
+| **MS-WH-SP-RG** | srážkoměr                             | 27                 | Není podporován  | Volitelný     |
 
 **MS-WH-SP-RG**
 
