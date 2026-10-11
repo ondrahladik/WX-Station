@@ -54,7 +54,7 @@ The firmware can send data via HTTP GET to up to three different servers and one
 * **Server i:** Sends information to the server when the station starts or when requested using the MQTT `info` command. The station name (from the second field), firmware version, local IP address, and public IP address are transmitted.
 * **Server 1, Server 2, Server 3:** Server addresses for sending measurement data. The second field is optional and is used as the `station` parameter to identify the station, which is useful when operating multiple stations.
 
-All server addresses must begin with `http://` or `https://`. If no specific file is required, the address must end with a trailing slash `/`.
+All server addresses must begin with `http://` or `https://`. If no specific file is required, the firmware automatically adds the trailing slash `/` after the domain or directory path when sending data.
 
 Examples:
 
