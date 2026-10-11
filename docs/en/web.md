@@ -39,6 +39,7 @@ Full station configuration.
 ### DATA
 
 * **Temp, Humi, Press:** The names used for temperature, humidity, and pressure when sending HTTP GET parameters and as JSON keys in MQTT messages.
+* **Main sensor:** Selects the source of temperature, humidity, and pressure. The default is BME280; alternatively, BMP280+AHT20 can be selected, where BMP280 provides pressure and AHT20 provides temperature and humidity.
 * **Offset:** Used to calibrate temperature, humidity, and pressure. Both positive and negative values are supported.
 * **Light 🔹:** The name used for the light sensor when sending HTTP GET parameters and as the JSON key in MQTT messages.
 * **Rain 🔹:** Rain gauge calibration, meaning how many millimeters of rainfall correspond to one bucket tip. The default value is `0.2794`.

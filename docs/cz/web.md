@@ -39,6 +39,7 @@ Kompletní konfigurace stanice.
 ### DATA
 
 * **Temp, Humi, Press:** Název teploty, vlhkosti a tlaku používaný při odesílání HTTP GET parametrů i jako JSON klíč při odesílání dat přes MQTT.
+* **Main sensor:** Volba zdroje teploty, vlhkosti a tlaku. Výchozí je BME280; alternativně lze zvolit dvojici BMP280+AHT20, kde BMP280 poskytuje tlak a AHT20 teplotu a vlhkost.
 * **Offset:** Slouží ke korekci teploty, vlhkosti a tlaku. Lze zadat kladné i záporné hodnoty.
 * **Light 🔹:** Název světelného senzoru používaný při odesílání HTTP GET parametrů i jako JSON klíč v MQTT.
 * **Rain 🔹:** Kalibrace srážkoměru, tedy kolik milimetrů srážek odpovídá jednomu překlopení. Výchozí hodnota je `0.2794`.   
