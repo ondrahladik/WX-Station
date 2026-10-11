@@ -39,6 +39,7 @@ bool loadConfig() {
     config.altitude    = 230.0;
 
     // Data active
+    config.environmentSensorType = ENV_SENSOR_BME280;
     config.activeLight = false; 
     config.activeRain  = false;
 
@@ -132,6 +133,10 @@ bool loadConfig() {
   config.altitude = doc["altitude"]          | 230.0;
 
   // Data active
+  config.environmentSensorType = doc["environmentSensorType"] | ENV_SENSOR_BME280;
+  if (config.environmentSensorType > ENV_SENSOR_BMP280_AHT20) {
+    config.environmentSensorType = ENV_SENSOR_BME280;
+  }
   config.activeLight = doc["activeLight"]   | false;
   config.activeRain  = doc["activeRain"]    | false;
 
@@ -235,6 +240,7 @@ bool saveConfig() {
   doc["altitude"]       = config.altitude;
   
   // Data active  
+  doc["environmentSensorType"] = config.environmentSensorType;
   doc["activeLight"] = config.activeLight;
   doc["activeRain"]  = config.activeRain;
 

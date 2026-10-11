@@ -21,6 +21,7 @@ extern float lightLux;
 extern float lightWm2;
 extern int rssi;
 extern void applyGPIOTriggerConfiguration();
+extern void reconfigureSensorsAfterConfigSave();
 
 // WebServer instance on port 80
 WebServer server(80);
@@ -636,6 +637,15 @@ String buildSettingsPage() {
     "<section>"
       "<h5><i class='bi bi-server'></i> DATA</h5>"
       "<div class='row mb-3'>"
+        "<label class='col-12 col-md-4 col-form-label'>Main sensor</label>"
+        "<div class='col-12 col-md-8'>"
+          "<select class='form-select' name='environmentSensorType'>"
+            "<option value='0' " + String(config.environmentSensorType == ENV_SENSOR_BME280 ? "selected" : "") + ">BME280 (temperature, humidity, pressure)</option>"
+            "<option value='1' " + String(config.environmentSensorType == ENV_SENSOR_BMP280_AHT20 ? "selected" : "") + ">BMP280 + AHT20 (pressure + temperature/humidity)</option>"
+          "</select>"
+        "</div>"
+      "</div>"
+      "<div class='row mb-3'>"
         "<label class='col-12 col-md-4 col-form-label'>Temp / Offset</label>"
         "<div class='col-12 col-md-4 mb-3 mb-md-0'>"
           "<input type='text' class='form-control' name='dataTemp' value='" + htmlEscape(config.dataTemp) + "' placeholder='temperature'>"
@@ -995,6 +1005,7 @@ void handleUpload() {
     Heartbeat::setEnabled(config.activeHeartbeat);
     RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
     applyGPIOTriggerConfiguration();
+    reconfigureSensorsAfterConfigSave();
   }
 }
 
@@ -1037,6 +1048,10 @@ void handleSave() {
 
   config.activeLight = server.hasArg("activeLight");
   config.activeRain  = server.hasArg("activeRain");
+  if (server.hasArg("environmentSensorType")) {
+    int sensorType = server.arg("environmentSensorType").toInt();
+    config.environmentSensorType = (sensorType == ENV_SENSOR_BMP280_AHT20) ? ENV_SENSOR_BMP280_AHT20 : ENV_SENSOR_BME280;
+  }
 
   if (server.hasArg("dataTemp"))  config.dataTemp  = server.arg("dataTemp");
   if (server.hasArg("dataHumi"))  config.dataHumi  = server.arg("dataHumi");
@@ -1099,6 +1114,7 @@ void handleSave() {
   Heartbeat::setEnabled(config.activeHeartbeat);
   RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
   applyGPIOTriggerConfiguration();
+  reconfigureSensorsAfterConfigSave();
 
   server.sendHeader("Location", "/setting?saved=1", true);
   server.send(303, "text/plain", "");
@@ -1151,6 +1167,7 @@ void setupWeb() {
     Heartbeat::setEnabled(config.activeHeartbeat);
     RainGauge::onConfigurationChanged(config.activeRain, config.rainTipMm);
     applyGPIOTriggerConfiguration();
+    reconfigureSensorsAfterConfigSave();
     server.sendHeader("Location", "/setting?factory=1", true);
     server.send(303, "text/plain", "");
   });

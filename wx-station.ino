@@ -4,6 +4,8 @@
 #include <HTTPUpdate.h> 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include <Adafruit_BMP280.h>
+#include <Adafruit_AHTX0.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -30,6 +32,8 @@ PubSubClient mqttClient(wifiClient);
 // ====== Global variables ======
 bool mqttNoWiFiReported = false;
 bool bmeOK = false;
+bool bmp280OK = false;
+bool aht20OK = false;
 bool lightOK = false;
 bool setupCompleted = false;
 bool accessPointModeActive = false;
@@ -52,6 +56,9 @@ const uint8_t maxConsecutiveLightReadErrors = 5;
 const unsigned long sensorRecoveryIntervalMs = 5000;
 const unsigned long ntpResyncIntervalMs = 6UL * 60UL * 60UL * 1000UL;
 const uint8_t bmeI2cAddress = 0x76;
+const uint8_t bmp280PrimaryAddress = 0x76;
+const uint8_t bmp280SecondaryAddress = 0x77;
+const uint8_t aht20I2cAddress = 0x38;
 const uint8_t bh1750PrimaryAddress = 0x23;
 const uint8_t bh1750SecondaryAddress = 0x5C;
 
@@ -68,7 +75,10 @@ float lightLux, lightWm2;
 int rssi;
 
 Adafruit_BME280 bme;
+Adafruit_BMP280 bmp280;
+Adafruit_AHTX0 aht20;
 BH1750 lightSensor;  
+uint8_t activeBmp280Address = bmp280PrimaryAddress;
 uint8_t activeBh1750Address = bh1750PrimaryAddress;
 unsigned long lastNtpSyncAttempt = 0;
 bool clockSynchronized = false;
@@ -90,11 +100,17 @@ void debugPrint(const char* msg, bool newline);
 void logToSyslog(const char* message);
 void appendDebugLog(const String& msg, bool newline);
 bool initBME280(uint8_t attempts = 5, bool waitBetweenAttempts = true);
+bool initBMP280AHT20(uint8_t attempts = 5, bool waitBetweenAttempts = true);
+bool initEnvironmentSensor(uint8_t attempts = 5, bool waitBetweenAttempts = true);
 bool initBH1750(uint8_t attempts = 5, bool waitBetweenAttempts = true);
 bool isI2CDeviceResponsive(uint8_t address);
 bool isBME280Responsive();
+bool isBMP280Responsive();
+bool isAHT20Responsive();
+bool isEnvironmentSensorResponsive();
 bool isBH1750Responsive();
 void tryRecoverSensors();
+void reconfigureSensorsAfterConfigSave();
 bool synchronizeClock(bool waitForSync = true);
 void startMDNSService();
 void applyGPIOTriggerConfiguration();
@@ -135,6 +151,8 @@ void setRuntimeSensorFault(const char* message) {
 
   runtimeSensorFaultActive = true;
   bmeOK = false;
+  bmp280OK = false;
+  aht20OK = false;
   lightOK = false;
   refreshHeartbeatState();
 }
@@ -534,6 +552,9 @@ void startMDNSService() {
 }
 
 bool initBME280(uint8_t attempts, bool waitBetweenAttempts) {
+  bmp280OK = false;
+  aht20OK = false;
+
   for (uint8_t i = 0; i < attempts; i++) {
     if (bme.begin(bmeI2cAddress) && isBME280Responsive()) {
       bmeOK = true;
@@ -553,6 +574,57 @@ bool initBME280(uint8_t attempts, bool waitBetweenAttempts) {
   return false;
 }
 
+bool initBMP280AHT20(uint8_t attempts, bool waitBetweenAttempts) {
+  bmeOK = false;
+
+  for (uint8_t i = 0; i < attempts; i++) {
+    bool bmpReady = false;
+    activeBmp280Address = bmp280PrimaryAddress;
+    if (bmp280.begin(bmp280PrimaryAddress) && isBMP280Responsive()) {
+      bmpReady = true;
+    } else {
+      activeBmp280Address = bmp280SecondaryAddress;
+      if (bmp280.begin(bmp280SecondaryAddress) && isBMP280Responsive()) {
+        bmpReady = true;
+      }
+    }
+
+    bool ahtReady = aht20.begin(&Wire, 0, aht20I2cAddress) && isAHT20Responsive();
+
+    bmp280OK = bmpReady;
+    aht20OK = ahtReady;
+
+    if (bmpReady && ahtReady) {
+      bmeOK = true;
+      bmeReadErrorCount = 0;
+      return true;
+    }
+
+    if (i + 1 < attempts) {
+      if (!bmpReady) {
+        debugPrint("SENS | BMP280 not found, retrying...", true);
+      }
+      if (!ahtReady) {
+        debugPrint("SENS | AHT20 not found, retrying...", true);
+      }
+      if (waitBetweenAttempts) {
+        delay(1000);
+      }
+    }
+  }
+
+  bmeOK = false;
+  return false;
+}
+
+bool initEnvironmentSensor(uint8_t attempts, bool waitBetweenAttempts) {
+  if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+    return initBMP280AHT20(attempts, waitBetweenAttempts);
+  }
+
+  return initBME280(attempts, waitBetweenAttempts);
+}
+
 bool isI2CDeviceResponsive(uint8_t address) {
   Wire.beginTransmission(address);
   return Wire.endTransmission() == 0;
@@ -565,6 +637,27 @@ bool isBME280Responsive() {
 
   uint8_t sensorId = bme.sensorID();
   return sensorId == 0x60;
+}
+
+bool isBMP280Responsive() {
+  if (!isI2CDeviceResponsive(activeBmp280Address)) {
+    return false;
+  }
+
+  uint8_t sensorId = bmp280.sensorID();
+  return sensorId == 0x58;
+}
+
+bool isAHT20Responsive() {
+  return isI2CDeviceResponsive(aht20I2cAddress);
+}
+
+bool isEnvironmentSensorResponsive() {
+  if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+    return bmp280OK && aht20OK && isBMP280Responsive() && isAHT20Responsive();
+  }
+
+  return bmeOK && isBME280Responsive();
 }
 
 bool isBH1750Responsive() {
@@ -620,7 +713,7 @@ void tryRecoverSensors() {
   debugPrint("SENS | Sensor recovery in progress...", true);
   logToSyslog("SENS | Sensor recovery in progress...");
 
-  bool bmeRecovered = initBME280(1, false);
+  bool bmeRecovered = initEnvironmentSensor(1, false);
   bool lightRecovered = initBH1750(1, false);
 
   if (bmeRecovered && lightRecovered) {
@@ -630,6 +723,33 @@ void tryRecoverSensors() {
     if (config.activeLight) {
       readLightSensor();
     }
+  }
+}
+
+void reconfigureSensorsAfterConfigSave() {
+  bool environmentReady = initEnvironmentSensor(3, true);
+  bool lightReady = initBH1750(3, true);
+
+  if (environmentReady && lightReady) {
+    clearRuntimeSensorFault();
+    readSensorData();
+
+    if (config.activeLight) {
+      readLightSensor();
+    }
+    return;
+  }
+
+  if (!environmentReady) {
+    if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+      setRuntimeSensorFault("SENS | BMP280/AHT20 initialization failed after configuration save.");
+    } else {
+      setRuntimeSensorFault("SENS | BME280 initialization failed after configuration save.");
+    }
+  }
+
+  if (!lightReady) {
+    setRuntimeSensorFault("SENS | BH1750 initialization failed after configuration save.");
   }
 }
 
@@ -678,29 +798,60 @@ bool synchronizeClock(bool waitForSync) {
 
 void readSensorData() {
   if (!bmeOK) {
-    setRuntimeSensorFault("SENS | BME280 unavailable.");
+    if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+      setRuntimeSensorFault("SENS | BMP280/AHT20 unavailable.");
+    } else {
+      setRuntimeSensorFault("SENS | BME280 unavailable.");
+    }
     return;
   }
 
-  if (!isBME280Responsive()) {
-    setRuntimeSensorFault("SENS | BME280 communication lost.");
+  if (!isEnvironmentSensorResponsive()) {
+    if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+      setRuntimeSensorFault("SENS | BMP280/AHT20 communication lost.");
+    } else {
+      setRuntimeSensorFault("SENS | BME280 communication lost.");
+    }
     return;
   }
 
-  float temp = bme.readTemperature();
-  float hum  = bme.readHumidity();
-  float pres = bme.readPressure() / 100.0F;
+  float temp;
+  float hum;
+  float pres;
+
+  if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+    sensors_event_t humidityEvent;
+    sensors_event_t tempEvent;
+    aht20.getEvent(&humidityEvent, &tempEvent);
+
+    temp = tempEvent.temperature;
+    hum = humidityEvent.relative_humidity;
+    pres = bmp280.readPressure() / 100.0F;
+  } else {
+    temp = bme.readTemperature();
+    hum  = bme.readHumidity();
+    pres = bme.readPressure() / 100.0F;
+  }
 
   if (isnan(temp) || isnan(hum) || isnan(pres)) {
-    debugPrint("SENS | BME280 read error!", true);
-    logToSyslog("SENS | BME280 read error!");
+    if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+      debugPrint("SENS | BMP280/AHT20 read error!", true);
+      logToSyslog("SENS | BMP280/AHT20 read error!");
+    } else {
+      debugPrint("SENS | BME280 read error!", true);
+      logToSyslog("SENS | BME280 read error!");
+    }
 
     if (bmeReadErrorCount < 255) {
       bmeReadErrorCount++;
     }
 
     if (bmeReadErrorCount >= maxConsecutiveBmeReadErrors) {
-      setRuntimeSensorFault("SENS | BME280 read failed repeatedly.");
+      if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+        setRuntimeSensorFault("SENS | BMP280/AHT20 read failed repeatedly.");
+      } else {
+        setRuntimeSensorFault("SENS | BME280 read failed repeatedly.");
+      }
     }
     return;
   }
@@ -1316,8 +1467,12 @@ void setup() {
   RainGauge::begin(config.activeRain, config.rainTipMm);
   applyGPIOTriggerConfiguration();
 
-  if (!initBME280()) {
-      setRuntimeSensorFault("SENS | BME280 initialization failed.");
+  if (!initEnvironmentSensor()) {
+      if (config.environmentSensorType == ENV_SENSOR_BMP280_AHT20) {
+          setRuntimeSensorFault("SENS | BMP280/AHT20 initialization failed.");
+      } else {
+          setRuntimeSensorFault("SENS | BME280 initialization failed.");
+      }
   }
 
   // Init BH1750 
@@ -1412,7 +1567,7 @@ void loop() {
       lastSensorRead = now;
 
       if (WiFi.status() == WL_CONNECTED) {
-          readSensorData();   // BME280
+          readSensorData();   // BME280 or BMP280/AHT20
 
           if (config.activeLight) {
               readLightSensor();  // BH1750

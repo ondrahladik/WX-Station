@@ -6,6 +6,11 @@
 constexpr uint8_t GPIO_TRIGGER_COUNT = 3;
 constexpr int8_t GPIO_TRIGGER_PIN_DISABLED = -1;
 
+enum EnvironmentSensorType : uint8_t {
+  ENV_SENSOR_BME280 = 0,
+  ENV_SENSOR_BMP280_AHT20 = 1
+};
+
 enum GPIOTriggerMetric : uint8_t {
   GPIO_TRIGGER_METRIC_TEMPERATURE = 0,
   GPIO_TRIGGER_METRIC_HUMIDITY = 1,
@@ -46,6 +51,7 @@ struct Config {
   String dataRssi;
 
   // Data active
+  uint8_t environmentSensorType;
   bool activeLight;
   bool activeRain;
   
