@@ -115,6 +115,8 @@ bool synchronizeClock(bool waitForSync = true);
 void startMDNSService();
 void applyGPIOTriggerConfiguration();
 void updateGPIOTriggers();
+void normalizeServerUrl(String& url);
+void appendUrlParameter(String& url, const String& name, const String& value);
 
 void refreshHeartbeatState() {
   if (fatalErrorActive || runtimeSensorFaultActive) {
@@ -899,6 +901,54 @@ void readLightSensor() {
     lightWm2 = lux * 0.0079;
 }
 
+void normalizeServerUrl(String& url) {
+  int schemeEnd = url.indexOf("://");
+  if (schemeEnd < 0) {
+    return;
+  }
+
+  int authorityStart = schemeEnd + 3;
+  int queryStart = url.indexOf('?');
+  int fragmentStart = url.indexOf('#');
+  int pathEnd = url.length();
+
+  if (queryStart >= 0 && queryStart < pathEnd) {
+    pathEnd = queryStart;
+  }
+  if (fragmentStart >= 0 && fragmentStart < pathEnd) {
+    pathEnd = fragmentStart;
+  }
+
+  if (pathEnd <= authorityStart) {
+    return;
+  }
+
+  int lastSlash = url.lastIndexOf('/', pathEnd - 1);
+  if (lastSlash < authorityStart) {
+    url = url.substring(0, pathEnd) + "/" + url.substring(pathEnd);
+    return;
+  }
+
+  if (lastSlash == pathEnd - 1) {
+    return;
+  }
+
+  String lastPathSegment = url.substring(lastSlash + 1, pathEnd);
+  if (lastPathSegment.indexOf('.') < 0) {
+    url = url.substring(0, pathEnd) + "/" + url.substring(pathEnd);
+  }
+}
+
+void appendUrlParameter(String& url, const String& name, const String& value) {
+  normalizeServerUrl(url);
+
+  if (!url.endsWith("?") && !url.endsWith("&")) {
+    url += (url.indexOf('?') >= 0) ? "&" : "?";
+  }
+
+  url += name + "=" + value;
+}
+
 void sendInfoToDB() {
   if (!config.serverActive0) return;
 
@@ -916,20 +966,15 @@ void sendInfoToDB() {
 
   String url = config.serverUrl0;
   if (config.serverName0.length() > 0) { 
-      url += "?station=";
-      url += config.serverName0;
-      url += "&version=";
-      url += programVers;
-  } else {
-      url += "?version=";
-      url += programVers;
+      appendUrlParameter(url, "station", config.serverName0);
   }
-  url += "&loc-ip=" + localIP;
-  url += "&pub-ip=" + publicIP;
+  appendUrlParameter(url, "version", programVers);
+  appendUrlParameter(url, "loc-ip", localIP);
+  appendUrlParameter(url, "pub-ip", publicIP);
 
   http.begin(url);
   int response = http.GET();
-  if (response > 0) {
+  if (response >= 200 && response < 300) {
     String msg = "INFO | SENT OK | HTTP " + String(response) + " | URL: " + url;
     debugPrint(msg, true);
     logToSyslog(msg.c_str());
@@ -942,32 +987,25 @@ void sendInfoToDB() {
 }
 
 void sendDataToDB() {
-  String rainParam = "";
-  if (config.activeRain) {
-    rainParam = "&rain_1h=" + String(RainGauge::getRainLastHourMm(), 2);
-    rainParam += "&rain_24h=" + String(RainGauge::getRainLast24HoursMm(), 2);
-  }
-
   // Server 1
   if (config.serverActive1) {
-      String url = config.serverUrl1 + "?";
-      
-      bool firstParam = true;
+      String url = config.serverUrl1;
 
       if (config.serverName1.length() > 0) {
-          url += "station=" + config.serverName1;
-          firstParam = false;
+          appendUrlParameter(url, "station", config.serverName1);
       }
 
-      url += (firstParam ? "" : "&") + String(config.dataTemp) + "=" + String(temperature, 2);
-      firstParam = false;
-      url += "&" + String(config.dataHumi) + "=" + String(humidity, 2);
-      url += "&" + String(config.dataPress) + "=" + String(seaLevelPressure, 2);
+      appendUrlParameter(url, config.dataTemp, String(temperature, 2));
+      appendUrlParameter(url, config.dataHumi, String(humidity, 2));
+      appendUrlParameter(url, config.dataPress, String(seaLevelPressure, 2));
       if (config.activeLight) {
-        url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
+        appendUrlParameter(url, config.dataLight, String(lightWm2, 2));
       }
-      url += rainParam;
-      url += "&" + String(config.dataRssi) + "=" + String(rssi);
+      if (config.activeRain) {
+        appendUrlParameter(url, "rain_1h", String(RainGauge::getRainLastHourMm(), 2));
+        appendUrlParameter(url, "rain_24h", String(RainGauge::getRainLast24HoursMm(), 2));
+      }
+      appendUrlParameter(url, config.dataRssi, String(rssi));
 
       HTTPClient http;
       http.begin(url);
@@ -975,7 +1013,7 @@ void sendDataToDB() {
 
       String msg;
 
-      if (httpResponseCode > 0) {
+      if (httpResponseCode >= 200 && httpResponseCode < 300) {
           msg = "SVR1 | SENT OK | HTTP " + String(httpResponseCode) + " | URL: " + url;
       } else {
           msg = "SVR1 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
@@ -989,30 +1027,30 @@ void sendDataToDB() {
 
   // Server 2
   if (config.serverActive2) {
-      String url = config.serverUrl2 + "?";
-      bool firstParam = true;
+      String url = config.serverUrl2;
 
       if (config.serverName2.length() > 0) {
-          url += "station=" + config.serverName2;
-          firstParam = false;
+          appendUrlParameter(url, "station", config.serverName2);
       }
 
-      url += (firstParam ? "" : "&") + String(config.dataTemp) + "=" + String(temperature, 2);
-      firstParam = false;
-      url += "&" + String(config.dataHumi) + "=" + String(humidity, 2);
-      url += "&" + String(config.dataPress) + "=" + String(seaLevelPressure, 2);
+      appendUrlParameter(url, config.dataTemp, String(temperature, 2));
+      appendUrlParameter(url, config.dataHumi, String(humidity, 2));
+      appendUrlParameter(url, config.dataPress, String(seaLevelPressure, 2));
       if (config.activeLight) {
-        url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
+        appendUrlParameter(url, config.dataLight, String(lightWm2, 2));
       }
-      url += rainParam;
-      url += "&" + String(config.dataRssi) + "=" + String(rssi);
+      if (config.activeRain) {
+        appendUrlParameter(url, "rain_1h", String(RainGauge::getRainLastHourMm(), 2));
+        appendUrlParameter(url, "rain_24h", String(RainGauge::getRainLast24HoursMm(), 2));
+      }
+      appendUrlParameter(url, config.dataRssi, String(rssi));
 
       HTTPClient http;
       http.begin(url);
       int httpResponseCode = http.GET();
 
       String msg;
-      if (httpResponseCode > 0) {
+      if (httpResponseCode >= 200 && httpResponseCode < 300) {
           msg = "SVR2 | SENT OK | HTTP " + String(httpResponseCode) + " | URL: " + url;
       } else {
           msg = "SVR2 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
@@ -1026,30 +1064,30 @@ void sendDataToDB() {
 
   // Server 3
   if (config.serverActive3) {
-      String url = config.serverUrl3 + "?";
-      bool firstParam = true;
+      String url = config.serverUrl3;
 
       if (config.serverName3.length() > 0) {
-          url += "station=" + config.serverName3;
-          firstParam = false;
+          appendUrlParameter(url, "station", config.serverName3);
       }
 
-      url += (firstParam ? "" : "&") + String(config.dataTemp) + "=" + String(temperature, 2);
-      firstParam = false;
-      url += "&" + String(config.dataHumi) + "=" + String(humidity, 2);
-      url += "&" + String(config.dataPress) + "=" + String(seaLevelPressure, 2);
+      appendUrlParameter(url, config.dataTemp, String(temperature, 2));
+      appendUrlParameter(url, config.dataHumi, String(humidity, 2));
+      appendUrlParameter(url, config.dataPress, String(seaLevelPressure, 2));
       if (config.activeLight) {
-        url += "&" + String(config.dataLight) + "=" + String(lightWm2, 2);
+        appendUrlParameter(url, config.dataLight, String(lightWm2, 2));
       }
-      url += rainParam;
-      url += "&" + String(config.dataRssi) + "=" + String(rssi);
+      if (config.activeRain) {
+        appendUrlParameter(url, "rain_1h", String(RainGauge::getRainLastHourMm(), 2));
+        appendUrlParameter(url, "rain_24h", String(RainGauge::getRainLast24HoursMm(), 2));
+      }
+      appendUrlParameter(url, config.dataRssi, String(rssi));
 
       HTTPClient http;
       http.begin(url);
       int httpResponseCode = http.GET();
 
       String msg;
-      if (httpResponseCode > 0) {
+      if (httpResponseCode >= 200 && httpResponseCode < 300) {
           msg = "SVR3 | SENT OK | HTTP " + String(httpResponseCode) + " | URL: " + url;
       } else {
           msg = "SVR3 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
