@@ -20,7 +20,7 @@
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.7";
+const char* programVers = "v1.0.8";
 const char* localHostname = "wx";
 
 WiFiUDP udp;
