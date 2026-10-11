@@ -15,6 +15,8 @@ To successfully build and upload the firmware, the following libraries are requi
 |-------------------------|-----------------------------------------------------|
 | Adafruit Unified Sensor | https://github.com/adafruit/Adafruit_Sensor         |
 | Adafruit BME280         | https://github.com/adafruit/Adafruit_BME280_Library |
+| Adafruit BMP280         | https://github.com/adafruit/Adafruit_BMP280_Library |
+| Adafruit AHTX0          | https://github.com/adafruit/Adafruit_AHTX0          |
 | WiFiManager             | https://github.com/tzapu/WiFiManager                |
 | PubSubClient            | https://github.com/knolleary/pubsubclient           |
 | ArduinoJson             | https://github.com/bblanchon/ArduinoJson            |
