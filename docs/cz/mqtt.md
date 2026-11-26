@@ -33,6 +33,9 @@ Slouží pro základní ovládání stanice.
 * **`reboot`**
   Restartuje stanici WX.
 
+* **`shutdown`**
+  Uloží stav srážkoměru, vypne výstupy triggerů a uvede ESP do hlubokého spánku s vypnutými zdroji probuzení. Stanice poté nebude vykonávat běžné funkce ani komunikovat přes MQTT. Pro její opětovné spuštění odpojte a znovu připojte napájení.
+
 * **`start-ap`**
   Aktivuje WiFi Manager pro změnu názvu Wi-Fi sítě (SSID) a hesla.
   *(Po dobu běhu WiFi Manageru není dostupné konfigurační webové rozhraní.)*

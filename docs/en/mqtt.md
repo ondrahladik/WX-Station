@@ -33,6 +33,9 @@ They are used for basic station control.
 - **`reboot`** 
   Restarts the WX station.
 
+- **`shutdown`**
+  Saves the rain gauge state, switches trigger outputs off, and puts the ESP into deep sleep with wakeup sources disabled. The station will stop its normal operation and MQTT communication. Disconnect and reconnect the power to start it again.
+
 - **`start-ap`** 
   Activates WiFi Manager to change the Wi-Fi SSID and password.  
   *(The configuration web interface is not available while WiFi Manager is running.)*

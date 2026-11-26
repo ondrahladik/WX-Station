@@ -11,6 +11,7 @@
 #include <ArduinoJson.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
+#include <esp_sleep.h>
 #include <BH1750.h>
 #include <time.h>
 #include <Wire.h>
@@ -1287,6 +1288,29 @@ void subscribeMQTT(char* topic, byte* payload, unsigned int length) {
     RainGauge::flush();
     ESP.restart();
   } 
+  else if (message.equalsIgnoreCase("shutdown")) {
+    const char* shutdownMessage = "MQTT | RECV OK | Command SHUTDOWN -> Entering deep sleep. Power cycle required to restart.";
+    debugPrint(shutdownMessage, true);
+    logToSyslog(shutdownMessage);
+
+    if (config.mqttTopicPub2.length() > 0) {
+      mqttClient.publish(config.mqttTopicPub2.c_str(), "shutdown OK - station entering deep sleep");
+    }
+
+    RainGauge::flush();
+    for (uint8_t i = 0; i < GPIO_TRIGGER_COUNT; i++) {
+      releaseGPIOTriggerPin(i);
+    }
+    Heartbeat::setEnabled(false);
+    mqttClient.disconnect();
+    WiFi.disconnect(true, false);
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    esp_deep_sleep_start();
+
+    while (true) {
+      delay(1000);
+    }
+  }
   else if (message.equalsIgnoreCase("start-ap")) {
     debugPrint("MQTT | RECV OK | Command START-AP -> Captive portal started...", true);
     logToSyslog("MQTT | RECV OK | Command START-AP -> Captive portal started...");
