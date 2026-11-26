@@ -11,6 +11,7 @@
 #include <ArduinoJson.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
+#include <WiFiClientSecure.h>
 #include <esp_sleep.h>
 #include <BH1750.h>
 #include <time.h>
@@ -989,6 +990,7 @@ void sendInfoToDB() {
   appendUrlParameter(url, "version", programVers);
   appendUrlParameter(url, "loc-ip", localIP);
   appendUrlParameter(url, "pub-ip", publicIP);
+  String urlForLog = url;
 
   File configFile = LittleFS.open("/config.json", "r");
   if (configFile) {
@@ -998,19 +1000,45 @@ void sendInfoToDB() {
     }
     configFile.close();
     appendUrlParameter(url, "config", urlEncode(configJson));
+    appendUrlParameter(urlForLog, "config", "...");
   } else {
     debugPrint("INFO | Cannot open /config.json, skipping config parameter", true);
     logToSyslog("INFO | Cannot open /config.json, skipping config parameter");
   }
 
-  http.begin(url);
+  WiFiClientSecure secureClient;
+  bool requestReady = false;
+  if (url.startsWith("https://")) {
+    secureClient.setInsecure();
+    requestReady = http.begin(secureClient, url);
+  } else {
+    requestReady = http.begin(url);
+  }
+
+  if (!requestReady) {
+    const char* msg = "INFO | SENT KO | Failed to initialize HTTP request";
+    debugPrint(msg, true);
+    logToSyslog(msg);
+    http.end();
+    return;
+  }
+
   int response = http.GET();
   if (response >= 200 && response < 300) {
-    String msg = "INFO | SENT OK | HTTP " + String(response) + " | URL: " + url;
+    String msg = "INFO | SENT OK | HTTP " + String(response) + " | URL: " + urlForLog;
     debugPrint(msg, true);
     logToSyslog(msg.c_str());
   } else {
-    String msg = "INFO | SENT KO | HTTP " + String(response) + " | URL: " + url;
+    String responseBody = http.getString();
+    responseBody.trim();
+    if (responseBody.length() > 160) {
+      responseBody = responseBody.substring(0, 160) + "...";
+    }
+
+    String msg = "INFO | SENT KO | HTTP " + String(response) + " | URL: " + urlForLog;
+    if (responseBody.length() > 0) {
+      msg += " | Response: " + responseBody;
+    }
     debugPrint(msg, true);
     logToSyslog(msg.c_str());
   }
