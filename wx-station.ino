@@ -968,6 +968,19 @@ String urlEncode(const String& value) {
   return encoded;
 }
 
+void appendHttpResponseBody(String& message, HTTPClient& http) {
+  String responseBody = http.getString();
+  responseBody.trim();
+  responseBody.replace("\r", " ");
+  responseBody.replace("\n", " ");
+  if (responseBody.length() > 160) {
+    responseBody = responseBody.substring(0, 160) + "...";
+  }
+  if (responseBody.length() > 0) {
+    message += "\nResponse: " + responseBody;
+  }
+}
+
 void sendInfoToDB() {
   if (!config.serverActive0) return;
 
@@ -1028,17 +1041,17 @@ void sendInfoToDB() {
     String msg = "INFO | SENT OK | HTTP " + String(response) + " | URL: " + urlForLog;
     debugPrint(msg, true);
     logToSyslog(msg.c_str());
-  } else {
-    String responseBody = http.getString();
-    responseBody.trim();
-    if (responseBody.length() > 160) {
-      responseBody = responseBody.substring(0, 160) + "...";
-    }
+  } else if (response <= 0) {
+    String statusMsg = "INFO | SENT KO | HTTP " + String(response) + " | URL: " + urlForLog;
+    debugPrint(statusMsg, true);
+    logToSyslog(statusMsg.c_str());
 
+    String errorMsg = "INFO | SENT KO | Error: " + http.errorToString(response);
+    debugPrint(errorMsg, true);
+    logToSyslog(errorMsg.c_str());
+  } else {
     String msg = "INFO | SENT KO | HTTP " + String(response) + " | URL: " + urlForLog;
-    if (responseBody.length() > 0) {
-      msg += " | Response: " + responseBody;
-    }
+    appendHttpResponseBody(msg, http);
     debugPrint(msg, true);
     logToSyslog(msg.c_str());
   }
@@ -1074,8 +1087,14 @@ void sendDataToDB() {
 
       if (httpResponseCode >= 200 && httpResponseCode < 300) {
           msg = "SVR1 | SENT OK | HTTP " + String(httpResponseCode) + " | URL: " + url;
+      } else if (httpResponseCode <= 0) {
+          msg = "SVR1 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
+          debugPrint(msg, true);
+          logToSyslog(msg.c_str());
+          msg = "SVR1 | SENT KO | Error: " + http.errorToString(httpResponseCode);
       } else {
           msg = "SVR1 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
+          appendHttpResponseBody(msg, http);
       }
 
       debugPrint(msg, true);
@@ -1111,8 +1130,14 @@ void sendDataToDB() {
       String msg;
       if (httpResponseCode >= 200 && httpResponseCode < 300) {
           msg = "SVR2 | SENT OK | HTTP " + String(httpResponseCode) + " | URL: " + url;
+      } else if (httpResponseCode <= 0) {
+          msg = "SVR2 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
+          debugPrint(msg, true);
+          logToSyslog(msg.c_str());
+          msg = "SVR2 | SENT KO | Error: " + http.errorToString(httpResponseCode);
       } else {
           msg = "SVR2 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
+          appendHttpResponseBody(msg, http);
       }
 
       debugPrint(msg, true);
@@ -1148,8 +1173,14 @@ void sendDataToDB() {
       String msg;
       if (httpResponseCode >= 200 && httpResponseCode < 300) {
           msg = "SVR3 | SENT OK | HTTP " + String(httpResponseCode) + " | URL: " + url;
+      } else if (httpResponseCode <= 0) {
+          msg = "SVR3 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
+          debugPrint(msg, true);
+          logToSyslog(msg.c_str());
+          msg = "SVR3 | SENT KO | Error: " + http.errorToString(httpResponseCode);
       } else {
           msg = "SVR3 | SENT KO | HTTP " + String(httpResponseCode) + " | URL: " + url;
+          appendHttpResponseBody(msg, http);
       }
 
       debugPrint(msg, true);
