@@ -1,5 +1,6 @@
 # CHANGELOG
 
+- **26. 11. 2026:** v1.0.9 - Added config upload to the info server and MQTT shutdown deep sleep.
 - **12. 10. 2026:** v1.0.8 - Added an alternative to the BME280 (BMP280 + AHT20) and normalized server URL handling.
 - **12. 08. 2026:** v1.0.7 - Added Trigger feature (GPIO output control based on measured values).
 - **18. 07. 2026:** v1.0.6 - Added mDNS (wx.local). Redesigned the web configuration and added dashboard and debug pages.
