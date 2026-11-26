@@ -51,7 +51,7 @@ Kompletní konfigurace stanice.
 
 Program může odesílat data pomocí HTTP GET až na tři různé servery a jeden informační server.
 
-* **Server i:** Odesílání informačních údajů na server při spuštění stanice nebo na vyžádání pomocí MQTT příkazu `info`. Odesílá se název stanice z druhého pole, verze programu, lokální IP adresa a veřejná IP adresa.
+* **Server i:** Odesílání informačních údajů na server při spuštění stanice nebo na vyžádání pomocí MQTT příkazu `info`. Odesílá se název stanice z druhého pole, verze programu, lokální IP adresa, veřejná IP adresa a celý obsah souboru `config.json` jako URL zakódovaný parametr `config`.
 * **Server 1, Server 2, Server 3:** Adresa serveru pro odesílání měřených dat. Druhé pole je nepovinné a slouží k identifikaci stanice (parametr `station`), což je užitečné při provozu více stanic.
 
 Všechny adresy serverů musí začínat na `http://` nebo `https://`. Pokud není potřeba zadávat konkrétní soubor, firmware při odesílání automaticky doplní koncové lomítko `/` za doménu nebo adresářovou cestu.

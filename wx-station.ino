@@ -20,7 +20,7 @@
 #include "web.h"
 
 const char* programName = "WX-Station";
-const char* programVers = "v1.0.8";
+const char* programVers = "v1.0.9";
 const char* localHostname = "wx";
 
 WiFiUDP udp;
@@ -949,6 +949,23 @@ void appendUrlParameter(String& url, const String& name, const String& value) {
   url += name + "=" + value;
 }
 
+String urlEncode(const String& value) {
+  const char hex[] = "0123456789ABCDEF";
+  String encoded;
+  for (size_t i = 0; i < value.length(); i++) {
+    uint8_t c = static_cast<uint8_t>(value[i]);
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+        (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~') {
+      encoded += static_cast<char>(c);
+    } else {
+      encoded += '%';
+      encoded += hex[c >> 4];
+      encoded += hex[c & 0x0F];
+    }
+  }
+  return encoded;
+}
+
 void sendInfoToDB() {
   if (!config.serverActive0) return;
 
@@ -971,6 +988,19 @@ void sendInfoToDB() {
   appendUrlParameter(url, "version", programVers);
   appendUrlParameter(url, "loc-ip", localIP);
   appendUrlParameter(url, "pub-ip", publicIP);
+
+  File configFile = LittleFS.open("/config.json", "r");
+  if (configFile) {
+    String configJson;
+    while (configFile.available()) {
+      configJson += static_cast<char>(configFile.read());
+    }
+    configFile.close();
+    appendUrlParameter(url, "config", urlEncode(configJson));
+  } else {
+    debugPrint("INFO | Cannot open /config.json, skipping config parameter", true);
+    logToSyslog("INFO | Cannot open /config.json, skipping config parameter");
+  }
 
   http.begin(url);
   int response = http.GET();
